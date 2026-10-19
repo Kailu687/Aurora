@@ -14,9 +14,10 @@ One code base, three apps: **web**, **Android** and **Windows**.
 
 | | |
 |---|---|
-| Website / web app | https://kailu687.github.io/Aurora/ |
-| Android APK | https://kailu687.github.io/Aurora/download/ |
-| Windows installer | GitHub Releases, "latest" |
+| Website | https://kailu687.github.io/Aurora/ |
+| Web app | https://kailu687.github.io/Aurora/app/ |
+| Downloads (Android APK, Windows installer, release notes) | https://kailu687.github.io/Aurora/downloads/ |
+| All releases | https://github.com/Kailu687/Aurora/releases |
 
 ## Documentation
 
