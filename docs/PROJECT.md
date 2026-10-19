@@ -64,8 +64,8 @@ Aurora/
 │  ├─ css/style.css        All styling (glassmorphism, layouts, phone layout, themes)
 │  ├─ js/                  The program, one file per concern (section 4)
 │  ├─ sw.js                Service worker: offline cache + holds downloaded updates
-│  ├─ manifest.webmanifest PWA manifest (name, icons, colours)
-│  ├─ config.json          { "updateUrl": "https://kailu687.github.io/Aurora/" }  where updates come from
+│  ├─ manifest.webmanifest PWA manifest (name, icons)
+│  ├─ config.json          { "updateUrl": ".../Aurora/app/" }  where updates come from
 │  └─ icons/               App icons (PNG)
 │
 ├─ android/                Android project (Gradle). A thin native shell around web/
@@ -79,19 +79,18 @@ Aurora/
 │     └─ res/                        Icons, colours, splash
 │
 ├─ electron/               Windows (and desktop) shell
-│  ├─ main.js              Window, app:// file server for the UI and for songs, folder scanning, OTA download
+│  ├─ main.js              Window, app:// file server, folder scan, OTA
 │  └─ preload.js           The small, safe bridge between Electron and the web app (window.desktop)
 │
 ├─ tools/                  Developer scripts
 │  ├─ serve.js             Local web server for development (npm run web)
-│  ├─ publish-web.js       Version bump + changelog entry (npm run bump) and website builder (npm run site)
-│  ├─ hash-releases.js     Records size + SHA-256 of the APK/installer for the Downloads page
+│  ├─ publish-web.js       Version bump (npm run bump) + website builder (npm run site)
+│  ├─ hash-releases.js     Size + SHA-256 of the APK/installer for the Downloads page
 │  ├─ build-android.ps1    Builds the signed APK (npm run android)
 │  ├─ build-all.ps1        APK + Windows installer + checksums (npm run release)
 │  ├─ make-icons.js        Draws the PNG icons without any image library
 │  ├─ make-test-music.js   Creates small fake songs for testing
-│  └─ site/                The marketing website: index.html (features, open source, security),
-│                          downloads/index.html (latest builds + every release), assets/ (css, js, screenshots)
+│  └─ site/                The marketing website (home page, downloads page, css, screenshots)
 │
 ├─ downloads/              Committed release files served by the website: Aurora.apk, hashes.json
 ├─ docs/changelog.json     Release notes of every version (feeds the Downloads page)

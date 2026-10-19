@@ -79,7 +79,7 @@ const releases = log.map((e, i) => {
   const base = `https://github.com/${REPO}/releases/download/v${e.version}`, same = hashes.version === e.version;
   return {
     version: e.version, date: e.date, notes: e.notes, page: `https://github.com/${REPO}/releases/tag/v${e.version}`,
-    android: { url: `${base}/Aurora-${e.version}.apk`, direct: i === 0 ? 'Aurora.apk' : undefined, size: same && hashes.android ? hashes.android.size : undefined, sha256: same && hashes.android ? hashes.android.sha256 : undefined },
+    android: { url: `${base}/Aurora.apk`, direct: i === 0 ? 'Aurora.apk' : undefined, size: same && hashes.android ? hashes.android.size : undefined, sha256: same && hashes.android ? hashes.android.sha256 : undefined },
     windows: { url: `${base}/Aurora-Setup-${e.version}.exe`, size: same && hashes.windows ? hashes.windows.size : undefined, sha256: same && hashes.windows ? hashes.windows.sha256 : undefined }
   };
 });

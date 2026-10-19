@@ -48,9 +48,9 @@ The Windows installer (about 87 MB) is too large for git, so it is published as 
 
 1. github.com, the repository, **Releases, Draft a new release**.
 2. Tag: `v<version>` (for example `v1.6.0`). Title: `Aurora <version>`. Paste the release notes.
-3. Attach these files from `D:\GitHub\Aurora\dist\`:
+3. Attach these files (installer from `dist\`, APK from `downloads\`):
    * `Aurora-Setup-<version>.exe`
-   * `Aurora-<version>.apk`
+   * `Aurora.apk` (the file in `downloads\`; use exactly this name)
    Keep these exact names; the Downloads page builds its per-release links from them.
 4. **Publish release.**
 

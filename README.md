@@ -20,6 +20,7 @@ One code base, three apps: **web**, **Android** and **Windows**.
 
 ## Documentation
 
+* [`docs/Aurora-Documentation.pdf`](docs/Aurora-Documentation.pdf): **the whole documentation as one PDF** (project guide + release guide)
 * [`docs/PROJECT.md`](docs/PROJECT.md): **the full guide**: what each part does, where it is, how it works
 * [`docs/RELEASING.md`](docs/RELEASING.md): publishing the website and updates step by step
 

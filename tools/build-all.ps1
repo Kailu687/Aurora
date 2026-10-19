@@ -11,5 +11,5 @@ npx electron-builder --win nsis
 node tools/hash-releases.js
 Write-Host ""
 Write-Host "Done."
-Write-Host "  Android : $root\downloads\Aurora.apk   (also dist\Aurora-<version>.apk for the GitHub Release)"
+Write-Host "  Android : $root\downloads\Aurora.apk   (attach it to the GitHub Release)"
 Get-ChildItem "$root\dist" -Filter 'Aurora-Setup-*.exe' | ForEach-Object { Write-Host "  Windows : $($_.FullName)" }

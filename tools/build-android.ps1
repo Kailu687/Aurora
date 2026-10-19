@@ -15,5 +15,5 @@ New-Item -ItemType Directory -Force "$root\downloads" | Out-Null
 Copy-Item "$root\android\app\build\outputs\apk\release\app-release.apk" "$root\downloads\Aurora.apk" -Force
 $ver = (Get-Content "$root\package.json" -Raw | ConvertFrom-Json).version
 New-Item -ItemType Directory -Force "$root\dist" | Out-Null
-Copy-Item "$root\downloads\Aurora.apk" "$root\dist\Aurora-$ver.apk" -Force   # the file name to attach to the GitHub Release
+Copy-Item "$root\downloads\Aurora.apk" "$root\dist\Aurora.apk" -Force   # attach this file to the GitHub Release
 Write-Host "APK ready: $root\downloads\Aurora.apk"
