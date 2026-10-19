@@ -321,9 +321,11 @@
         let a = albums.get(k); if (!a) albums.set(k, (a = { key: k, id: 'al' + A.hash(k), name: t.album, artist: t.albumArtist || t.artist, year: t.year, tracks: [] }));
         a.tracks.push(t.id); if (t.year && !a.year) a.year = t.year;
       }
-      const an = A.norm(t.artist);
-      let ar = artists.get(an); if (!ar) artists.set(an, (ar = { key: an, id: 'ar' + A.hash(an), name: t.artist, tracks: [] }));
-      ar.tracks.push(t.id);
+      for (const nm of A.splitArtists(t.artist)) {
+        const an = A.artistKey(nm);
+        let ar = artists.get(an); if (!ar) artists.set(an, (ar = { key: A.norm(nm), id: 'ar' + A.hash(an), name: nm, tracks: [] }));
+        if (ar.tracks[ar.tracks.length - 1] !== t.id) ar.tracks.push(t.id);
+      }
       if (t.genre) { const gk = A.norm(t.genre); let g = genres.get(gk); if (!g) genres.set(gk, (g = { key: gk, id: 'g' + A.hash(gk), name: t.genre, tracks: [] })); g.tracks.push(t.id); }
     }
     albums.forEach((a) => a.tracks.sort((x, y) => (L.byId.get(x).track || 999) - (L.byId.get(y).track || 999) || L.byId.get(x).title.localeCompare(L.byId.get(y).title)));

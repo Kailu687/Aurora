@@ -140,7 +140,7 @@
   V.album = (el, id) => { const a = L.derive().albumById.get(id); if (!a) return V.notfound(el); const ts = L.get(a.tracks); detail(el, { kind: 'Album', title: a.name, sub: `<a href="#/artist/${U.artistId(a.artist)}"><b>${esc(a.artist)}</b></a>${a.year ? ' · ' + a.year : ''}`, tracks: ts, meta: { type: 'album', id, name: a.name }, noAlbum: true }); };
   V.artist = (el, id) => {
     const a = L.derive().artistById.get(id); if (!a) return V.notfound(el); const ts = L.get(a.tracks);
-    const albums = L.derive().albums.filter((x) => L.byId.get(x.tracks[0]) && A.norm(L.byId.get(x.tracks[0]).artist) === a.key);
+    const mine = new Set(a.tracks), albums = L.derive().albums.filter((x) => x.tracks.some((i) => mine.has(i)));
     const top = ts.slice().sort((x, y) => y.plays - x.plays).slice(0, 5);
     detail(el, { kind: 'Artist', title: a.name, sub: `${albums.length} album${albums.length === 1 ? '' : 's'}`, tracks: ts, round: true, meta: { type: 'artist', id, name: a.name }, sortable: true, after: shelf('Albums', albums.map(albumCard)) + (top[0] && top[0].plays ? `<div class="sec"><h2>Most played</h2></div>${top.map((t) => `<div class="faint" style="font-size:13px">${esc(t.title)} · ${t.plays} plays</div>`).join('')}` : '') });
   };

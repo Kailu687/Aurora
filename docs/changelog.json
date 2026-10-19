@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.6.2",
+    "date": "2026-10-19",
+    "notes": [
+      "Artists are now split properly: 'A.R. Rahman;Aaryan' lists under A.R. Rahman and Aaryan instead of making a separate artist",
+      "Download button for the Android app now comes straight from the website"
+    ]
+  },
+  {
     "version": "1.6.1",
     "date": "2026-10-19",
     "notes": [

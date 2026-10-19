@@ -1,11 +1,11 @@
 {
-  "version": "1.6.1",
+  "version": "1.6.2",
   "android": {
-    "size": 3594730,
-    "sha256": "18fd9e10f239e4acdadb58f9a1da6436104b9b211249fc1d3dfae298bac4c329"
+    "size": 3595122,
+    "sha256": "45e222012dc9ed99cd947fafe56ab5fc21109d56480cdc5d440c96fc7359eaab"
   },
   "windows": {
-    "size": 91227942,
-    "sha256": "b3190b8b9fb1d5abf062c37c5a6143cb6de1c2157296cc01c9370ffccd71bbe7"
+    "size": 91228242,
+    "sha256": "b636c683a2891ec641cffb03a05c61b26a46d902d2207dae0e001e4154fb6ee2"
   }
 }

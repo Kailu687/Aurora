@@ -114,7 +114,8 @@
     card.querySelector('.s').textContent = mb(p.size);
     card.querySelector('.h-hash').textContent = p.sha256 || 'published with the release';
     var a = card.querySelector('.a-dl');
-    a.href = p.url || rel.page || a.href;
+    // Android: the APK is served from this site (no redirect, correct file type); the Windows installer is too big for git, so it comes from GitHub Releases.
+    if (plat !== 'android') a.href = p.url || rel.page || a.href;
   }
   function render(rels) {
     var latest = rels[0]; if (!latest) return false;

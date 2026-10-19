@@ -47,7 +47,7 @@
   };
 
   // ---------- ids ----------
-  U.artistId = (name) => 'ar' + A.hash(A.norm(name));
+  U.artistId = (name) => 'ar' + A.hash(A.artistKey(A.splitArtists(name)[0]));
   U.albumId = (t) => 'al' + A.hash(A.norm((t.albumArtist || t.artist) + '|' + t.album));
   U.cover = (t, cls = '') => L.coverHTML(L.artUrl(t), t.album || t.title, cls);
 

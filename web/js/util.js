@@ -15,6 +15,9 @@ window.A = window.A || {};
   A.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   A.idle = () => new Promise((r) => (window.requestIdleCallback ? requestIdleCallback(() => r(), { timeout: 200 }) : setTimeout(r, 0)));
   A.norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // "A.R. Rahman;Aaryan" / "24kGoldn, iann dior" / "X feat. Y" -> separate artist names; keys ignore dots, spaces and case
+  A.splitArtists = (s) => { const out = [], seen = new Set(); String(s || '').split(/\s*(?:;|\/|,|&|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*/i).forEach((n) => { n = n.trim(); const k = A.artistKey(n); if (n && k && !seen.has(k)) { seen.add(k); out.push(n); } }); return out.length ? out : [String(s || 'Unknown Artist').trim() || 'Unknown Artist']; };
+  A.artistKey = (s) => A.norm(s).replace(/[^\p{L}\p{N}]+/gu, '');
 
   // cyrb53 string hash
   A.hash = (str, seed = 0) => {
