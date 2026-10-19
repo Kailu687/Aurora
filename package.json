@@ -1,0 +1,64 @@
+{
+  "name": "aurora-player",
+  "productName": "Aurora",
+  "version": "1.6.0",
+  "description": "Aurora - a glassmorphic music player for your own songs, with an AI DJ. Web, Android and Windows.",
+  "main": "electron/main.js",
+  "author": "Kailu687",
+  "license": "MIT",
+  "homepage": "https://kailu687.github.io/Aurora/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kailu687/Aurora.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "web": "node tools/serve.js",
+    "icons": "node tools/make-icons.js",
+    "bump": "node tools/publish-web.js --stamp-only",
+    "site": "node tools/publish-web.js --out site",
+    "android": "powershell -ExecutionPolicy Bypass -File tools/build-android.ps1",
+    "windows": "electron-builder --win nsis",
+    "hash": "node tools/hash-releases.js",
+    "release": "powershell -ExecutionPolicy Bypass -File tools/build-all.ps1"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
+  },
+  "build": {
+    "appId": "app.aurora.player",
+    "productName": "Aurora",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "web/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "compression": "normal",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false,
+      "artifactName": "Aurora-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Aurora"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "1.6.0",
+  "android": {
+    "size": 3594494,
+    "sha256": "c2d7fd685d9e17796748bb79df3a903c81bd28c00598f0dd0992c7a8c2a5bcc3"
+  },
+  "windows": {
+    "size": 91227805,
+    "sha256": "0a2e2c2642d3748403c446357e9b95bf30d8aec03bcdacacd3ed6ba0adb6a47e"
+  }
+}

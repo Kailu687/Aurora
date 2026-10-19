@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aurora</title>
+<meta name="description" content="Aurora - a glassmorphic local music player with an AI DJ.">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="bg" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
+
+<div id="app">
+  <aside id="sidebar" class="glass">
+    <div class="brand"><span class="logo"></span><b>Aurora</b></div>
+    <nav id="nav">
+      <a href="#/" data-nav="home"></a>
+      <a href="#/search" data-nav="search"></a>
+      <a href="#/library" data-nav="library"></a>
+      <a href="#/dj" data-nav="dj" class="djlink"></a>
+      <a href="#/stats" data-nav="stats"></a>
+    </nav>
+    <div class="side-sec">
+      <div class="side-h"><span>Playlists</span><button class="icon-btn sm" data-a="new-playlist" title="New playlist"></button></div>
+      <div id="side-playlists"></div>
+    </div>
+    <div class="side-foot">
+      <button class="btn ghost wide" data-a="add-music" id="btn-add"></button>
+      <button class="btn ghost wide" data-a="install" id="btn-install" hidden></button>
+      <a class="foot-link" href="#/settings" data-nav="settings" id="nav-settings"></a>
+    </div>
+  </aside>
+
+  <main id="main" class="glass">
+    <header id="topbar">
+      <div class="tb-nav">
+        <button class="icon-btn" data-a="back" id="tb-back" title="Back"></button>
+        <button class="icon-btn" data-a="fwd" id="tb-fwd" title="Forward"></button>
+      </div>
+      <label class="searchbox" id="tb-search">
+        <span id="tb-search-ic"></span>
+        <input id="q" type="search" placeholder="What do you want to play?" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="tb-right">
+        <button class="icon-btn" data-a="theme" id="tb-theme" title="Toggle light / dark"></button>
+        <button class="icon-btn" data-a="settings" id="tb-settings" title="Settings"></button>
+      </div>
+    </header>
+    <div id="view" tabindex="-1"></div>
+  </main>
+
+  <aside id="side" class="glass">
+    <div class="side-tabs">
+      <button data-a="side-tab" data-id="queue">Queue</button>
+      <button data-a="side-tab" data-id="lyrics">Lyrics</button>
+      <button data-a="side-tab" data-id="dj">DJ</button>
+      <button class="icon-btn sm close" data-a="close-side" id="side-close"></button>
+    </div>
+    <div id="side-body"></div>
+  </aside>
+
+  <footer id="player" class="glass">
+    <div class="pb-track" id="pb-track" data-a="open-np"></div>
+    <div class="pb-center">
+      <div class="pb-btns">
+        <button class="icon-btn" data-a="shuffle" id="pb-shuffle" title="Shuffle (S)"></button>
+        <button class="icon-btn" data-a="prev" id="pb-prev" title="Previous"></button>
+        <button class="play-btn" data-a="toggle" id="pb-play" title="Play / Pause (Space)"></button>
+        <button class="icon-btn" data-a="next" id="pb-next" title="Next"></button>
+        <button class="icon-btn" data-a="repeat" id="pb-repeat" title="Repeat (R)"></button>
+      </div>
+      <div class="pb-seek"><span id="pb-cur">0:00</span><input class="range" type="range" id="pb-seek" min="0" max="1000" value="0" aria-label="Seek"><span id="pb-dur">0:00</span></div>
+    </div>
+    <div class="pb-right">
+      <button class="icon-btn" data-a="side-tab" data-id="lyrics" id="pb-lyrics" title="Lyrics (Y)"></button>
+      <button class="icon-btn" data-a="side-tab" data-id="queue" id="pb-queue" title="Queue (Q)"></button>
+      <button class="icon-btn" data-a="sound" id="pb-sound" title="Sound, speed &amp; sleep timer"></button>
+      <div class="vol"><button class="icon-btn" data-a="mute" id="pb-mute" title="Mute (M)"></button><input class="range" type="range" id="pb-vol" min="0" max="100" aria-label="Volume"></div>
+      <button class="icon-btn" data-a="open-np" id="pb-expand" title="Now playing (F)"></button>
+    </div>
+    <div class="mini-progress"><i id="mini-fill"></i></div>
+  </footer>
+
+  <nav id="mobilenav" class="glass">
+    <a href="#/" data-nav="home"></a><a href="#/search" data-nav="search"></a><a href="#/dj" data-nav="dj"></a><a href="#/library" data-nav="library"></a>
+  </nav>
+</div>
+
+<section id="np" aria-hidden="true">
+  <div class="np-bg" id="np-bg"></div>
+  <header class="np-top">
+    <button class="icon-btn" data-a="close-np" id="np-close" title="Close"></button>
+    <div class="np-from"><small>PLAYING FROM</small><b id="np-from">Your Library</b></div>
+    <button class="icon-btn" data-a="np-more" id="np-more" title="More"></button>
+  </header>
+  <div class="np-body">
+    <div class="np-stage">
+      <div class="np-art" id="np-art"></div>
+      <canvas id="viz" width="900" height="260"></canvas>
+    </div>
+    <div class="np-info">
+      <div class="np-tabs"><button data-a="np-tab" data-id="art">Art</button><button data-a="np-tab" data-id="lyrics">Lyrics</button><button data-a="np-tab" data-id="queue">Queue</button><button data-a="np-tab" data-id="dj">DJ</button></div>
+      <div class="np-panel" id="np-panel"></div>
+    </div>
+  </div>
+  <div class="np-bottom">
+    <div class="np-title"><div class="np-t" id="np-title"></div><div class="np-a" id="np-artist"></div></div>
+    <button class="icon-btn lg" data-a="like-current" id="np-like" title="Like (L)"></button>
+    <div class="pb-seek np-seek"><span id="np-cur">0:00</span><input class="range" type="range" id="np-seek" min="0" max="1000" value="0" aria-label="Seek"><span id="np-dur">0:00</span></div>
+    <div class="pb-btns np-btns">
+      <button class="icon-btn" data-a="shuffle" id="np-shuffle"></button>
+      <button class="icon-btn lg" data-a="prev" id="np-prev"></button>
+      <button class="play-btn xl" data-a="toggle" id="np-play"></button>
+      <button class="icon-btn lg" data-a="next" id="np-next"></button>
+      <button class="icon-btn" data-a="repeat" id="np-repeat"></button>
+    </div>
+    <div class="np-tools">
+      <button class="icon-btn" data-a="np-tab" data-id="lyrics" id="np-t-lyrics"></button>
+      <button class="icon-btn" data-a="sound" id="np-t-sound"></button>
+      <button class="icon-btn" data-a="np-tab" data-id="queue" id="np-t-queue"></button>
+      <div class="vol"><button class="icon-btn" data-a="mute" id="np-mute"></button><input class="range" type="range" id="np-vol" min="0" max="100" aria-label="Volume"></div>
+    </div>
+  </div>
+</section>
+
+<div id="dj-bubble" class="glass" aria-live="polite"><div class="orb sm" id="dj-orb"></div><div><b id="dj-name">Nova</b><p id="dj-text"></p></div></div>
+<div id="drop" hidden><div class="drop-card glass"><div id="drop-ic"></div><h2>Drop to add music</h2><p>Folders and audio files (mp3, m4a, mp4, wav, flac, ogg)</p></div></div>
+<div id="ctx" class="glass" hidden></div>
+<div id="modal-host"></div>
+<div id="toasts"></div>
+<input type="file" id="file-in" multiple accept="audio/*,video/mp4" hidden>
+<input type="file" id="dir-in" webkitdirectory multiple hidden>
+<input type="file" id="img-in" accept="image/*" hidden>
+
+<script src="js/version.js"></script>
+<script src="js/util.js"></script>
+<script src="js/db.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/library.js"></script>
+<script src="js/player.js"></script>
+<script src="js/dj.js"></script>
+<script src="js/updater.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/views.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/native.js"></script>
+</body>
+</html>

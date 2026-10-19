@@ -1,0 +1,27 @@
+# dependencies and build output
+node_modules/
+dist/
+site/
+*.log
+
+# Android build output and machine-specific files
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/.kotlin/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/assets/capacitor.config.json
+
+# SECRETS: the Android signing key and its password must never be committed
+android/keystore.properties
+*.jks
+*.keystore
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
