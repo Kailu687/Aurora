@@ -54,8 +54,11 @@ The Windows installer (about 87 MB) is too large for git, so it is published as 
    Keep these exact names; the Downloads page builds its per-release links from them.
 4. **Publish release.**
 
-The Downloads page lists the latest APK straight from the website (`/downloads/Aurora.apk`, which is committed to git),
-and the Windows installer plus all older versions from the Releases.
+**The website updates itself.** The Downloads page reads your GitHub Releases live (GitHub's public API), so a new
+release, its notes, file sizes and download links appear as soon as you publish it. Nothing else to do. The release
+notes you write are shown as the "what changed" list (bullet points; lines like "Windows: Aurora-Setup-1.6.1.exe" are
+hidden). The workflow also rebuilds the site on every Release event and keeps a saved copy (`releases.json`) that the
+page uses if GitHub's API is unreachable.
 
 ## D. Which changes reach users how
 

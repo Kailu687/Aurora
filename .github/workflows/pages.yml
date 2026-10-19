@@ -2,9 +2,12 @@ name: Publish website and updates
 
 # Every push to main rebuilds the website and publishes it to GitHub Pages.
 # The installed apps (Android / Windows / web) read update-manifest.json from that site to offer over-the-air updates.
+# It also runs when a GitHub Release is published or edited, so the Downloads page snapshot stays current.
 on:
   push:
     branches: [main]
+  release:
+    types: [published, edited, deleted, released]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +32,8 @@ jobs:
           node-version: 20
       - name: Build the website folder
         run: node tools/publish-web.js --out site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

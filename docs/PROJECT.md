@@ -293,9 +293,9 @@ the user would have to uninstall first (losing the app's data). **Back up the Au
 | URL | Source | Purpose |
 |---|---|---|
 | `/` | `tools/site/index.html` | Explains the features, the AI DJ, the platforms, and has the **Open source and security** section (what Aurora connects to, how to verify downloads) |
-| `/downloads/` | `tools/site/downloads/index.html` | Latest Android and Windows downloads with size and SHA-256, install steps, and every release with its notes. Reads `/releases.json` |
+| `/downloads/` | `tools/site/downloads/index.html` | Latest Android and Windows downloads with size and SHA-256, install steps, and every release with its notes. Reads GitHub Releases live (GitHub API), falling back to `/releases.json` |
 | `/app/` | `web/` | The web app itself, plus `update-manifest.json` (the over-the-air update feed) |
-| `/releases.json` | generated | Changelog + download links + checksums, built from `docs/changelog.json` and `downloads/hashes.json` |
+| `/releases.json` | generated | Snapshot of GitHub Releases (notes, links, sizes, checksums) made at deploy time; falls back to `docs/changelog.json` if the API is unreachable. The workflow also runs on every Release event |
 
 `npm run site` builds all of this into `./site` (not committed); GitHub Actions does the same on every push and publishes it.
 

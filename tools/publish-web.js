@@ -72,17 +72,31 @@ const dl = path.join(root, 'downloads');
 fs.mkdirSync(path.join(out, 'downloads'), { recursive: true });
 if (fs.existsSync(dl)) for (const f of fs.readdirSync(dl)) { const s = path.join(dl, f); if (fs.statSync(s).isFile() && fs.statSync(s).size < 95e6 && f !== 'hashes.json') fs.copyFileSync(s, path.join(out, 'downloads', f)); }
 
-// 4) releases.json for the download page
+// 4) releases.json for the download page: a snapshot of your GitHub Releases taken at build time.
+//    (The page also reads GitHub live in the browser, so new releases appear immediately; this file is the fallback.)
+const AuroraReleases = require('./site/assets/releases.js');
 const hashes = fs.existsSync(path.join(dl, 'hashes.json')) ? JSON.parse(fs.readFileSync(path.join(dl, 'hashes.json'), 'utf8')) : {};
 const log = fs.existsSync(changelogPath) ? JSON.parse(fs.readFileSync(changelogPath, 'utf8')) : [];
-const releases = log.map((e, i) => {
+const fromChangelog = () => log.map((e) => {
   const base = `https://github.com/${REPO}/releases/download/v${e.version}`, same = hashes.version === e.version;
   return {
     version: e.version, date: e.date, notes: e.notes, page: `https://github.com/${REPO}/releases/tag/v${e.version}`,
-    android: { url: `${base}/Aurora.apk`, direct: i === 0 ? 'Aurora.apk' : undefined, size: same && hashes.android ? hashes.android.size : undefined, sha256: same && hashes.android ? hashes.android.sha256 : undefined },
+    android: { url: `${base}/Aurora.apk`, size: same && hashes.android ? hashes.android.size : undefined, sha256: same && hashes.android ? hashes.android.sha256 : undefined },
     windows: { url: `${base}/Aurora-Setup-${e.version}.exe`, size: same && hashes.windows ? hashes.windows.size : undefined, sha256: same && hashes.windows ? hashes.windows.sha256 : undefined }
   };
 });
-fs.writeFileSync(path.join(out, 'releases.json'), JSON.stringify({ repo: REPO, generated: new Date().toISOString(), latest: releases[0] && releases[0].version, releases }, null, 1));
-fs.writeFileSync(path.join(out, '.nojekyll'), '');
-console.log(`Website built: v${name} (build ${build}) -> ${out}  (${listed.length} app files, ${releases.length} releases)`);
+async function fromGitHub() {
+  const headers = { 'User-Agent': 'aurora-site-build', Accept: 'application/vnd.github+json' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`, { headers });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return AuroraReleases.convert(await r.json());
+}
+(async () => {
+  let releases = null, source = 'docs/changelog.json';
+  if (!flag('offline')) { try { releases = await fromGitHub(); source = 'GitHub Releases'; } catch (e) { console.log('GitHub releases not reachable (' + e.message + '), using docs/changelog.json'); } }
+  if (!releases || !releases.length) { releases = fromChangelog(); source = 'docs/changelog.json'; }
+  fs.writeFileSync(path.join(out, 'releases.json'), JSON.stringify({ repo: REPO, generated: new Date().toISOString(), source, latest: releases[0] && releases[0].version, releases }, null, 1));
+  fs.writeFileSync(path.join(out, '.nojekyll'), '');
+  console.log(`Website built: v${name} (build ${build}) -> ${out}  (${listed.length} app files, ${releases.length} releases from ${source})`);
+})();
