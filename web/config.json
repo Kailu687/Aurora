@@ -1,1 +1,4 @@
-{ "updateUrl": "https://kailu687.github.io/Aurora/app/" }
+{
+  "updateUrl": "https://kailashamarnath.me/Aurora/app/",
+  "updateUrlFallback": "https://kailu687.github.io/Aurora/app/"
+}

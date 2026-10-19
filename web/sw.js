@@ -1,5 +1,5 @@
 /* Aurora service worker: offline shell + cloud-update cache ('aurora-live'). */
-const BUNDLE_BUILD = 17; // stamped by tools/publish-web.js
+const BUNDLE_BUILD = 18; // stamped by tools/publish-web.js
 const CACHE = 'aurora-v2', LIVE = 'aurora-live';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'config.json', 'css/style.css', 'js/version.js', 'js/util.js', 'js/db.js', 'js/meta.js', 'js/engine.js', 'js/library.js', 'js/player.js', 'js/dj.js', 'js/updater.js', 'js/ui.js', 'js/views.js', 'js/shell.js', 'js/native.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 

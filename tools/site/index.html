@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurora: your music, beautifully played</title>
+<meta name="description" content="Aurora is a free, open-source music player for the songs on your own device. Glass-smooth design, an AI DJ that mixes by mood, and apps for Android, Windows and the web.">
+<meta name="theme-color" content="#07070c">
+<link rel="icon" href="app/icons/icon-192.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="bg"></div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="logo"></span>Aurora</a>
+    <nav class="links">
+      <a href="#features">Features</a><a href="#dj">AI DJ</a><a href="#platforms">Platforms</a><a href="#security">Open source &amp; security</a><a href="downloads/">Downloads</a>
+    </nav>
+    <div class="top-actions">
+      <a class="btn ghost sm" href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+      <a class="btn accent sm" href="downloads/">Download</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Free &amp; open source</span>
+      <h1>Your music,<br>beautifully played.</h1>
+      <p class="lead">Aurora plays the songs already on your phone or PC, in a glass-smooth player with an <b>AI DJ</b> that mixes by mood. No accounts, no ads, no uploads. Your music never leaves your device.</p>
+      <div class="cta">
+        <a class="btn accent" href="downloads/">Download for Android &amp; Windows</a>
+        <a class="btn ghost" href="app/">Try it in your browser</a>
+        <a class="btn ghost" href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+      <div class="badges">
+        <span class="badge"><b>●</b> Open source (MIT)</span><span class="badge">No tracking</span><span class="badge">Plays straight from your folder</span><span class="badge">Android · Windows · Web</span>
+      </div>
+    </div>
+    <div class="hero-shots reveal">
+      <div class="shot"><img src="assets/shots/home.jpg" alt="Aurora home screen on desktop" width="1500" height="938"></div>
+      <div class="shot phone"><img src="assets/shots/phone-home.jpg" alt="Aurora on a phone" width="780" height="1688"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="wrap">
+    <span class="eyebrow">Features</span>
+    <h2>Everything you expect, and a few things you don’t.</h2>
+    <p class="sub">A familiar layout (library, search, queue, playlists) wrapped in a calm, colourful design that follows your album art.</p>
+    <div class="grid">
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><h3>Plays from your folder, never copies</h3><p>Pick your music folder once. Aurora reads the songs right where they are, so there is no duplicate storage and no waiting for an import.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg></div><h3>AI DJ</h3><p>Choose a vibe and your DJ builds a flowing set from your own library, talks between songs, and takes requests.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></div><h3>Album covers, automatically</h3><p>Uses the picture in the file or a <code>cover.jpg</code> in the folder. If there is none, it finds one online once and saves it.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div><h3>Notification-bar &amp; lock-screen player</h3><p>On Android: controls, cover art and a seek bar in the notification shade, on the lock screen and in Samsung’s media panel. Music keeps playing in the background.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg></div><h3>Queue, playlists, likes</h3><p>Play next, add to queue, drag to reorder, shuffle, repeat, endless “radio” from any song, and Liked Songs.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><h3>Made-for-you mixes</h3><p>Daily Mixes, On Repeat, Rediscover, decade throwbacks and mood mixes, generated on your device from your own listening.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div><h3>Synced lyrics</h3><p>Drop <code>.lrc</code> files next to your songs and the current line glows as it plays. Plain lyrics work too.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></div><h3>Sound controls</h3><p>Crossfade, volume normalisation, playback speed, sleep timer, and a 10-band equalizer with presets on the web and Windows apps.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div><h3>Listening stats</h3><p>See your top songs, artists, genres and listening clock, plus a playful “listening personality”. All computed on your device.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></div><h3>Light &amp; dark, your colours</h3><p>Dark and light themes, accent colours that follow the artwork or stay fixed, and adjustable glass blur.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div><h3>Over-the-air updates</h3><p>New versions arrive by themselves. Aurora tells you what changed and asks before installing.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg></div><h3>Picks up where you left off</h3><p>Close the app and come back: your queue, song and position are exactly as you left them.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- DJ -->
+<section id="dj">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">AI DJ</span>
+      <h2>A DJ that knows your library.</h2>
+      <p class="sub" style="margin-bottom:12px">Aurora listens to your songs on your device, measuring energy, tempo and mood, then builds a set that flows from one track to the next.</p>
+      <div class="vibes" aria-label="Vibes">
+        <span style="background:linear-gradient(135deg,#5ee7df,#4a6cf7)">Chill</span><span style="background:linear-gradient(135deg,#ff512f,#dd2476)">Hype</span><span style="background:linear-gradient(135deg,#43cea2,#185a9d)">Focus</span><span style="background:linear-gradient(135deg,#7f00ff,#e100ff)">Late Night</span><span style="background:linear-gradient(135deg,#f12711,#f5af19)">Workout</span><span style="background:linear-gradient(135deg,#fc466b,#3f5efb)">Party</span><span style="background:linear-gradient(135deg,#f9d423,#ff4e50)">Feel Good</span><span style="background:linear-gradient(135deg,#4b6cb7,#182848)">In My Feelings</span><span style="background:linear-gradient(135deg,#ee0979,#ff6a00)">Romance</span><span style="background:linear-gradient(135deg,#f7971e,#c79a00)">Throwback</span><span style="background:linear-gradient(135deg,#56ab2f,#7cb342)">Road Trip</span><span style="background:linear-gradient(135deg,#2c3e50,#4ca1af)">Wind Down</span>
+      </div>
+      <ul class="ticks">
+        <li><b>Talks like the radio.</b> Short spoken intros between songs, with the music lowered while it speaks. Pick Smooth, Hype or Zen.</li>
+        <li><b>Takes requests.</b> Type “play some jazz”, “more energy” or an artist’s name, or tap Hype it up / Chill it down / More like this.</li>
+        <li><b>Private by design.</b> The mood analysis happens on your device. Optionally add your own AI key for richer patter; only song and artist names are sent.</li>
+        <li><b>Your call.</b> One switch in Settings turns the whole DJ off.</li>
+      </ul>
+    </div>
+    <div class="reveal"><div class="shot"><img src="assets/shots/dj.jpg" alt="The AI DJ screen with live commentary and vibe picker" loading="lazy" width="1500" height="938"></div></div>
+  </div>
+</section>
+
+<!-- PLATFORMS -->
+<section id="platforms">
+  <div class="wrap">
+    <span class="eyebrow">Everywhere you listen</span>
+    <h2>One app, three homes.</h2>
+    <p class="sub">The same design and the same features, built to feel native on each device.</p>
+    <div class="grid">
+      <div class="card glass dl-card reveal"><h3>Android</h3><p>Folder linking, notification-bar and lock-screen player, background playback, phone text-to-speech for the DJ. Closing it from the app switcher really closes it.</p><a class="btn accent" href="downloads/#android">Get the APK</a></div>
+      <div class="card glass dl-card reveal"><h3>Windows</h3><p>A proper installer, desktop layout, media keys, equalizer and visualizer, and a folder you pick once.</p><a class="btn accent" href="downloads/#windows">Get the installer</a></div>
+      <div class="card glass dl-card reveal"><h3>Web</h3><p>Runs in any modern browser and installs like an app. Chrome and Edge can link a music folder directly.</p><a class="btn ghost" href="app/">Open Aurora</a></div>
+    </div>
+    <div class="shot reveal" style="margin-top:34px"><img src="assets/shots/library.jpg" alt="Aurora library view" loading="lazy" width="1500" height="938"></div>
+  </div>
+</section>
+
+<!-- SECURITY / OPEN SOURCE -->
+<section id="security">
+  <div class="wrap">
+    <span class="eyebrow">Open source &amp; security</span>
+    <h2>Free, open, and honest about what it does.</h2>
+    <p class="sub">Aurora is open-source software under the MIT licence. Anyone can read the code, build it themselves, or suggest changes. It is an independent project with its own code.</p>
+    <div class="split" style="align-items:start">
+      <div class="reveal">
+        <ul class="ticks">
+          <li><b>Open source.</b> Every line is on <a href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">GitHub</a>. Nothing is hidden, so nothing has to be taken on trust.</li>
+          <li><b>No accounts, ads or tracking.</b> There is no analytics code and nothing to sign up for.</li>
+          <li><b>Your songs stay on your device.</b> Aurora reads them read-only, from the folder you choose. They are never uploaded and never copied. On Android you can take access back at any time in the phone’s settings.</li>
+          <li><b>Verifiable downloads.</b> The Android app is signed with the Aurora release key, and the SHA-256 checksum of every release is published on the <a href="downloads/">Downloads</a> page so you can check your file is untouched.</li>
+          <li><b>You can delete everything.</b> “Clear library” and “Reset to defaults” are in Settings; uninstalling removes all app data.</li>
+        </ul>
+        <p class="note" style="margin-top:18px">Fair warning: Aurora has not had a third-party security audit, and the Windows installer is not yet code-signed, so Windows SmartScreen may show a caution the first time. Checking the checksum on the Downloads page is the quickest way to be sure the file is genuine.</p>
+      </div>
+      <div class="glass table-wrap reveal">
+        <table class="net">
+          <thead><tr><th>Connection</th><th>Why</th><th>What is sent</th></tr></thead>
+          <tbody>
+            <tr><td>kailu687.github.io</td><td>Check for a newer version of Aurora</td><td>Nothing about you; it just downloads a small update list</td></tr>
+            <tr><td>itunes.apple.com</td><td>Find a missing album cover (once per album, then saved)</td><td>Artist and album names. Can be turned off in Settings</td></tr>
+            <tr><td>api.anthropic.com</td><td><i>Optional.</i> AI-written DJ lines, only if you add your own key</td><td>Song and artist names. The key never leaves your device</td></tr>
+          </tbody>
+        </table>
+        <p style="margin:12px 14px 6px;color:var(--faint);font-size:13.5px">That is the complete list. Your music, playlists, play history and settings stay on your device.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section>
+  <div class="wrap">
+    <div class="glass final reveal">
+      <h2>Ready to hear your library differently?</h2>
+      <p class="sub" style="margin:0 auto 24px">Download Aurora, point it at your music folder, and press play.</p>
+      <div class="cta">
+        <a class="btn accent" href="downloads/">Go to Downloads</a>
+        <a class="btn ghost" href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">View source on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>Aurora · MIT licensed · an independent open-source project</div>
+    <div><a href="downloads/">Downloads</a> · <a href="app/">Web app</a> · <a href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/Kailu687/Aurora/blob/main/docs/PROJECT.md" target="_blank" rel="noopener">Documentation</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

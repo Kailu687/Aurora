@@ -4,13 +4,13 @@ This is the exact, step-by-step process. Your GitHub user is `Kailu687` and the 
 
 | What | Address |
 |---|---|
-| Website | `https://kailu687.github.io/Aurora/` |
-| Downloads page | `https://kailu687.github.io/Aurora/downloads/` |
-| Web app | `https://kailu687.github.io/Aurora/app/` |
-| Update feed the apps read | `https://kailu687.github.io/Aurora/app/update-manifest.json` |
+| Website | `https://kailashamarnath.me/Aurora/` |
+| Downloads page | `https://kailashamarnath.me/Aurora/downloads/` |
+| Web app | `https://kailashamarnath.me/Aurora/app/` |
+| Update feed the apps read | `https://kailashamarnath.me/Aurora/app/update-manifest.json` |
 | Source code | `https://github.com/Kailu687/Aurora` |
 
-The update address is built into the apps through `web/config.json`. If you ever rename the repository or user,
+Because your GitHub account already publishes `kailashamarnath.me` (custom domain), every project site under the account is served from it, so Aurora lives at `kailashamarnath.me/Aurora/`. The old `kailu687.github.io/Aurora/` address redirects there. The apps know both: `web/config.json` has `updateUrl` (the custom domain) and `updateUrlFallback` (the `github.io` address), and they try them in that order. If you ever rename the repository or user,
 change it there, in `tools/site/**`, in `tools/publish-web.js` (the `REPO` constant) and in `package.json`.
 
 ## A. One-time setup (about 10 minutes)

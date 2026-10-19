@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.6.1",
+    "date": "2026-10-19",
+    "notes": [
+      "Update checks use your own domain with an automatic fallback",
+      "The website pages (home and downloads) are now published"
+    ]
+  },
+  {
     "version": "1.6.0",
     "date": "2026-10-19",
     "notes": [

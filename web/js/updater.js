@@ -7,13 +7,14 @@
   const say = (s) => { UP.status = s; UP.listeners.forEach((f) => f()); };
 
   UP.load = async () => { try { UP.cfg = await (await fetch('config.json', { cache: 'no-store' })).json(); } catch { UP.cfg = {}; } };
-  UP.url = () => {
-    let u = (A.store.get('updateUrl', '') || UP.cfg.updateUrl || '').trim();
-    if (!u && /^https?:$/.test(location.protocol) && !/^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname)) u = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
-    if (!u) return '';
-    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-    return u.replace(/index\.html$/, '').replace(/\/?$/, '/');
+  // Update sources in order of preference: a user override, config.json (your domain), the fallback address
+  // (the github.io address keeps working even if the custom domain changes), or this site itself when served online.
+  const clean = (u) => { u = (u || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u)) u = 'https://' + u; return u.replace(/index\.html$/, '').replace(/\/?$/, '/'); };
+  UP.bases = () => {
+    const own = /^https?:$/.test(location.protocol) && !/^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname) ? location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '') : '';
+    return [...new Set([A.store.get('updateUrl', ''), UP.cfg.updateUrl, UP.cfg.updateUrlFallback, own].map(clean).filter(Boolean))];
   };
+  UP.url = () => UP.bases()[0] || '';
 
   async function getManifest(base) {
     const u = base + 'update-manifest.json?t=' + Date.now();
@@ -24,12 +25,14 @@
 
   // Returns 'none' | 'available' | 'current' | 'error'
   UP.check = async ({ manual = false } = {}) => {
-    if (UP.checking) return; const base = UP.url();
-    if (!base) { if (manual) { say('Set an update address first.'); A.toast('Enter your update address in Settings first'); } return 'none'; }
+    if (UP.checking) return; const bases = UP.bases();
+    if (!bases.length) { if (manual) say('No update source is configured.'); return 'none'; }
     if (!navigator.onLine) { if (manual) say('You’re offline.'); return 'error'; }
     UP.checking = true; if (manual) say('Checking…');
     try {
-      const m = await getManifest(base);
+      let m = null, base = '', lastErr = null;
+      for (const b of bases) { try { m = await getManifest(b); base = b; break; } catch (e) { lastErr = e; } }
+      if (!m) throw lastErr || new Error('No update source reachable');
       if (!m || typeof m.build !== 'number' || !Array.isArray(m.files)) throw new Error('Not an Aurora update feed');
       if (m.build <= A.VERSION.build) { say(`You’re up to date (v${A.VERSION.name}).`); if (manual) A.toast('You’re on the latest version'); return 'current'; }
       if (!manual && A.store.get('skipBuild', 0) === m.build) { say(`Update v${m.name || m.build} available (skipped).`); return 'available'; }

@@ -1,12 +1,12 @@
 {
   "name": "aurora-player",
   "productName": "Aurora",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Aurora - a glassmorphic music player for your own songs, with an AI DJ. Web, Android and Windows.",
   "main": "electron/main.js",
   "author": "Kailu687",
   "license": "MIT",
-  "homepage": "https://kailu687.github.io/Aurora/",
+  "homepage": "https://kailashamarnath.me/Aurora/",
   "repository": {
     "type": "git",
     "url": "https://github.com/Kailu687/Aurora.git"
