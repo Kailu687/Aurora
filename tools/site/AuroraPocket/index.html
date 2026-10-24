@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurora Pocket: a dedicated wired music player</title>
+<meta name="description" content="Aurora Pocket is a pocket-sized, wired-only music player in development: a colour display with album art, five tactile buttons, a 3.5 mm headphone jack, microSD storage and USB-C. V1 prototype design.">
+<meta name="theme-color" content="#07070c">
+<link rel="icon" href="../app/icons/icon-192.png">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+/* Aurora Pocket page: extras on top of the shared site styles */
+.status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 750; color: #ffd27a; background: rgba(255,190,80,.12); border: 1px solid rgba(255,190,80,.35); margin-bottom: 16px; }
+.status-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #ffbe50; box-shadow: 0 0 0 4px rgba(255,190,80,.2); }
+
+/* renders */
+.stage { position: relative; display: grid; place-items: center; min-height: 520px; }
+.stage::before { content: ""; position: absolute; width: 70%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--ar), .35), transparent); filter: blur(30px); }
+.hero-render { position: relative; width: auto; max-width: 100%; height: 540px; filter: drop-shadow(0 40px 60px rgba(0,0,0,.6)); }
+
+
+/* signal chain */
+.chain { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 6px 0 26px; }
+.chain .node { padding: 12px 16px; border-radius: 14px; background: var(--glass); border: 1px solid var(--stroke); font-weight: 700; font-size: 14.5px; }
+.chain .node small { display: block; font-weight: 600; font-size: 12px; color: var(--faint); }
+.chain .node.opt { border-style: dashed; }
+.chain .arr { color: rgb(var(--ar)); font-weight: 800; }
+
+/* battery figure */
+.big { font-size: clamp(56px, 9vw, 96px); font-weight: 800; letter-spacing: -.04em; line-height: 1; background: linear-gradient(135deg, #fff, rgba(255,255,255,.6)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.big small { font-size: .35em; letter-spacing: -.01em; }
+.facts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-top: 22px; }
+.fact { padding: 16px 18px; } .fact b { display: block; font-size: 22px; letter-spacing: -.02em; } .fact span { color: var(--faint); font-size: 13.5px; }
+
+/* left out */
+.nope { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.nope span { padding: 8px 15px; border-radius: 999px; font-weight: 650; font-size: 14px; color: var(--muted); background: var(--glass); border: 1px solid var(--stroke); text-decoration: line-through; text-decoration-color: rgba(var(--ar), .8); text-decoration-thickness: 2px; }
+
+/* specs */
+table.specs { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.specs th, table.specs td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--stroke); vertical-align: top; }
+table.specs tr:last-child th, table.specs tr:last-child td { border-bottom: 0; }
+table.specs th { width: 30%; color: var(--faint); font-weight: 650; font-size: 13.5px; letter-spacing: .02em; }
+table.specs td { color: var(--muted); } table.specs td b { color: var(--text); font-weight: 650; }
+
+/* roadmap */
+.road { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.road li { padding: 18px 20px; } .road li p { margin: 4px 0 0; color: var(--muted); font-size: 14.5px; }
+.road .st { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.road .done .st { color: #6ee7a0; } .road .now .st { color: #ffd27a; } .road .next .st { color: var(--faint); }
+.road .now { border-color: rgba(255,190,80,.45); }
+
+.renders { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.renders figure { margin: 0; padding: 20px; display: flex; flex-direction: column; } .renders img { display: block; width: 100%; height: 260px; object-fit: contain; filter: drop-shadow(0 24px 30px rgba(0,0,0,.5)); } .renders figcaption { color: var(--muted); font-size: 14.5px; margin-top: 14px; } .renders figcaption b { color: var(--text); display: block; }
+
+@media (max-width: 860px) { .stage { min-height: 0; } .hero-render { height: 420px; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../"><span class="logo"></span>Aurora</a>
+    <nav class="links">
+      <a href="#design">Design</a><a href="#inside">Inside</a><a href="#sound">Sound</a><a href="#battery">Battery</a><a href="#library">Library</a><a href="#specs">Specs</a><a href="#status">Status</a>
+    </nav>
+    <div class="top-actions">
+      <a class="btn ghost sm" href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+      <a class="btn accent sm" href="../">Aurora app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="status-pill">In development · V1 prototype</span>
+      <span class="eyebrow" style="display:block">Aurora Pocket</span>
+      <h1>Your music,<br>in your pocket.</h1>
+      <p class="lead">A small, dedicated music player for the songs you own. A colour screen with album art, five proper buttons, a headphone jack, and a microSD card you can swap. No phone, no internet, no subscription.</p>
+      <div class="cta">
+        <a class="btn accent" href="#specs">See the specs</a>
+        <a class="btn ghost" href="#status">Follow the build</a>
+      </div>
+      <div class="badges">
+        <span class="badge"><b>●</b> Wired headphones</span><span class="badge">Removable microSD</span><span class="badge">USB-C charging &amp; transfer</span><span class="badge">No subscription</span>
+      </div>
+    </div>
+    <div class="stage reveal">
+      <img class="hero-render" src="img/hero-front-3q.webp" alt="Render of Aurora Pocket: a slim graphite player with a colour screen showing album art, title and progress" width="600" height="1111">
+    </div>
+  </div>
+</section>
+
+<!-- DESIGN -->
+<section id="design">
+  <div class="wrap">
+    <span class="eyebrow">Design</span>
+    <h2>One screen. Five buttons. Nothing else.</h2>
+    <p class="sub">Aurora Pocket is built to be picked up and played, not configured. A slim graphite body with rounded corners, a display that shows what you are listening to, and controls you can find without looking.</p>
+    <div class="grid">
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><rect x="8" y="5" width="8" height="8" rx="1.5"/></svg></div><h3>A colour display with album art</h3><p data-spec="display">Cover art, title, artist, progress and battery on a 1.69-inch IPS colour screen (240 × 280). Menus stay simple: library, playlists, settings.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7"/></svg></div><h3>Buttons that click</h3><p>Five aluminium buttons along one side, on real tactile switches: volume up and down, then previous, play/pause and next. Use it in a pocket, by feel. Hold play/pause to switch off.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg></div><h3>Headphones in, music on</h3><p>A 3.5 mm jack on the top end, USB-C and the microSD slot on the bottom. 52 × 104 × 11.3 mm, with every opening aligned and nothing sticking out.</p></div>
+    </div>
+    <div class="renders" style="margin-top:16px">
+      <figure class="glass reveal"><img src="img/front.webp" alt="Front of Aurora Pocket" loading="lazy" width="683" height="1282"><figcaption><b>Front</b>Just the screen and a quiet wordmark.</figcaption></figure>
+      <figure class="glass reveal"><img src="img/buttons-side.webp" alt="Side of Aurora Pocket with five buttons" loading="lazy" width="389" height="1160"><figcaption><b>Buttons side</b>Volume pair up top, playback trio below.</figcaption></figure>
+      <figure class="glass reveal"><img src="img/top-end.webp" alt="Top end of Aurora Pocket with the 3.5 mm headphone jack" loading="lazy" width="1000" height="803"><figcaption><b>Top end</b>3.5 mm headphone jack.</figcaption></figure>
+      <figure class="glass reveal"><img src="img/bottom-end.webp" alt="Bottom end of Aurora Pocket with USB-C and microSD" loading="lazy" width="1000" height="803"><figcaption><b>Bottom end</b>USB-C and microSD.</figcaption></figure>
+    </div>
+    <p style="color:var(--faint);font-size:13.5px;margin:12px 0 0">Renders of the V1 enclosure design. The prototype will be 3D printed, so finish and colour may differ.</p>
+  </div>
+</section>
+
+<!-- INSIDE -->
+<section id="inside" style="padding-top:24px">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">Inside</span>
+      <h2>Built to be opened.</h2>
+      <p class="sub" style="margin-bottom:18px">No development boards, no loose wires. One custom circuit board carries everything, and the case closes with four screws so it can be opened and repaired.</p>
+      <ul class="ticks">
+        <li><b>Front lens.</b> One piece of black glass-look lens across the whole face, with the screen behind it.</li>
+        <li><b>Frame and buttons.</b> The graphite frame holds the five aluminium keys and the openings at each end.</li>
+        <li><b>Two-layer circuit board.</b> Processor, audio chip, charger, connectors and switches on a single custom board.</li>
+        <li><b>1200 mAh battery</b> with its own protection circuit, under a screwed-on back cover.</li>
+      </ul>
+    </div>
+    <div class="reveal"><img src="img/exploded.webp" alt="Exploded view of Aurora Pocket: front lens, frame with buttons, display, circuit board, battery, microSD card, back cover and screws" loading="lazy" width="1034" height="912" style="display:block;width:100%;height:auto;filter:drop-shadow(0 30px 40px rgba(0,0,0,.55))"></div>
+  </div>
+</section>
+
+<!-- SOUND -->
+<section id="sound">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">Sound</span>
+      <h2>Wired, on purpose.</h2>
+      <p class="sub" style="margin-bottom:18px">No Bluetooth means no pairing, no compression and no lag. Your files go straight from the card to a proper headphone amplifier.</p>
+      <ul class="ticks">
+        <li><b>A real headphone output.</b> A TI TLV320AIC3100 stereo DAC with a built-in headphone driver, designed for 16 to 32 Ω earbuds and headphones, not a line-out chip.</li>
+        <li><b>Plays what you already have.</b> MP3, WAV and FLAC. AAC (M4A) is planned.</li>
+        <li><b>Optional EQ.</b> A simple equaliser that runs in the audio chip’s own hardware, off by default.</li>
+        <li><b>Quiet when it should be.</b> Low background hiss and no pops when you plug in or press play.</li>
+      </ul>
+    </div>
+    <div class="glass reveal" style="padding:26px">
+      <h3 style="margin-bottom:14px">From card to ears</h3>
+      <div class="chain" aria-label="Audio signal chain">
+        <span class="node">microSD<small>your files</small></span><span class="arr">→</span>
+        <span class="node">Decoder<small>RP2350</small></span><span class="arr">→</span>
+        <span class="node">PCM buffer</span><span class="arr">→</span>
+        <span class="node opt">EQ<small>optional</small></span><span class="arr">→</span>
+        <span class="node">DAC<small>TLV320AIC3100</small></span><span class="arr">→</span>
+        <span class="node">Headphone driver<small>same chip</small></span><span class="arr">→</span>
+        <span class="node">3.5 mm</span>
+      </div>
+      <p class="note" style="margin:0">A note on MP4 and M4A: they are containers, not formats. V1 plans to support AAC-LC audio inside M4A files. Apple Lossless (ALAC) and HE-AAC are not planned.</p>
+    </div>
+  </div>
+</section>
+
+<!-- BATTERY -->
+<section id="battery">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">Battery</span>
+      <h2>A week of listening on one charge.</h2>
+      <p class="sub">With no radios to feed, almost all of the power goes to playing music. The screen sleeps when you don’t need it, and when it is off the player draws around 10 µA.</p>
+      <p class="note" style="margin:0">These figures are <b>estimated</b> from the power budget of the V1 design, not measured on a finished unit. They will be replaced with measured numbers once the prototype is tested.</p>
+    </div>
+    <div class="glass reveal" style="padding:30px">
+      <div class="big">1 week+</div>
+      <p style="color:var(--muted);margin:10px 0 0">of typical use at about 3 hours of listening a day (estimated)</p>
+      <div class="facts">
+        <div class="glass fact"><b>1200 mAh</b><span>Li-Po battery with protection</span></div>
+        <div class="glass fact"><b>~45 h</b><span>continuous playback, screen off (estimated)</span></div>
+        <div class="glass fact"><b>~3 h</b><span>full charge over USB-C (estimated)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIBRARY -->
+<section id="library">
+  <div class="wrap">
+    <span class="eyebrow">Your library</span>
+    <h2>Your songs, on a card you own.</h2>
+    <p class="sub">The whole library lives on a removable microSD card, not locked inside the device. Want more room? Put in a bigger card.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M9 6v3M12 6v3M15 7v2"/></svg></div><h3>Swap cards any time</h3><p>The player notices when the card comes out and rescans when a new one goes in. FAT32 and exFAT, designed for cards up to 512 GB.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></div><h3>Album art from your files</h3><p>Reads tags and embedded cover art, and keeps small cached thumbnails on the card so scrolling stays quick.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div><h3>Shows up as a USB drive</h3><p>Plug it into a computer or a phone that supports USB drives and drag music onto it. No app needed. For a big first load, a card reader is faster.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg></div><h3>Works with Aurora</h3><p>Playlists are plain files on the card, and the plan is for the Aurora app to send its playlists and favourites straight to it.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div><h3>Updatable and recoverable</h3><p>Firmware updates are a drag-and-drop file over USB-C. The recovery mode lives in the chip’s read-only memory, so a bad update can always be undone.</p></div>
+      <div class="card glass reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></div><h3>Open, like the app</h3><p>The plan is to publish the schematics, board files, enclosure and firmware, so anyone can build one, fix one, or make it their own.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- LEFT OUT -->
+<section>
+  <div class="wrap">
+    <div class="glass reveal" style="padding:34px">
+      <span class="eyebrow">Deliberately left out</span>
+      <h2 style="font-size:clamp(24px,3.4vw,34px)">What it doesn’t do is the point.</h2>
+      <p class="sub" style="margin-bottom:18px">Every extra radio and sensor costs battery, money and attention. V1 does one job well.</p>
+      <div class="nope"><span>Bluetooth</span><span>Wi-Fi</span><span>Streaming</span><span>Cloud accounts</span><span>Touchscreen</span><span>Speaker</span><span>Microphone</span><span>Camera</span><span>Ads &amp; tracking</span></div>
+      <p style="color:var(--faint);font-size:14px;margin:18px 0 0">Wireless audio may be considered for a later hardware revision. V1 is not designed around it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SPECS -->
+<section id="specs">
+  <div class="wrap">
+    <span class="eyebrow">Specifications</span>
+    <h2>V1 prototype specs.</h2>
+    <p class="sub">Design specifications for the first prototype. It has not been built or tested yet, so some details may change, and anything marked estimated comes from calculations, not measurements. Aurora Pocket is not certified for sale.</p>
+    <div class="glass table-wrap reveal">
+      <table class="specs">
+        <tbody id="spec-rows">
+          <tr><th>Size</th><td><b>52 × 104 × 11.3 mm</b></td></tr>
+          <tr><th>Body</th><td>Matte graphite enclosure with a full-face black lens and aluminium buttons. 3D-printed for the prototype</td></tr>
+          <tr><th>Display</th><td><b>1.69-inch IPS colour, 240 × 280</b> (ST7789V2)</td></tr>
+          <tr><th>Controls</th><td>5 tactile side buttons: volume up, volume down, previous, play/pause, next. Hold play/pause for power</td></tr>
+          <tr><th>Processor</th><td><b>Raspberry Pi RP2350</b> microcontroller, dual-core Arm Cortex-M33 at 150 MHz, 520 KB RAM, 8 MB flash</td></tr>
+          <tr><th>Audio output</th><td><b>3.5 mm stereo headphone jack</b>. TI TLV320AIC3100 DAC with integrated headphone driver, for 16 to 32 Ω headphones</td></tr>
+          <tr><th>Formats</th><td><b>MP3, WAV, FLAC</b>. AAC-LC in M4A planned</td></tr>
+          <tr><th>Storage</th><td><b>Removable microSD</b>, FAT32 or exFAT. Designed for cards up to 512 GB; the largest card has not been tested yet</td></tr>
+          <tr><th>USB</th><td><b>USB-C</b>: charging, appears as a USB drive (USB 1.1 full speed, about 1 MB/s), settings over serial, drag-and-drop firmware updates</td></tr>
+          <tr><th>Battery</th><td><b>1200 mAh Li-Po</b> with protection circuit and temperature sensing. Up to ~45 h continuous playback with the screen off, ~25 h with it always on (estimated)</td></tr>
+          <tr><th>Charging</th><td>USB-C, 500 mA, about 3 h from empty (estimated). Plays while charging</td></tr>
+          <tr><th>Wireless</th><td>None. No Bluetooth, no Wi-Fi</td></tr>
+          <tr><th>Circuit board</th><td>Custom two-layer PCB, no development boards inside</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- STATUS -->
+<section id="status">
+  <div class="wrap">
+    <span class="eyebrow">Status</span>
+    <h2>Where the build is.</h2>
+    <p class="sub">Aurora Pocket is a hardware project in progress, not a product you can buy yet. Here is how far it has got.</p>
+    <ol class="road">
+      <li class="glass done reveal"><span class="st">Done</span><h3>Requirements</h3><p>Scope fixed: wired-only, microSD, USB-C, five buttons, colour display.</p></li>
+      <li class="glass now reveal"><span class="st">In progress</span><h3>Electronics &amp; PCB</h3><p>Architecture and parts chosen; schematic, two-layer board layout and parts list underway.</p></li>
+      <li class="glass now reveal"><span class="st">In progress</span><h3>Enclosure &amp; firmware</h3><p>3D-printable case modelled around real switch and connector sizes (renders above); playback firmware.</p></li>
+      <li class="glass next reveal"><span class="st">Next</span><h3>First prototype</h3><p>Order boards, assemble, and measure real battery life and audio quality.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section>
+  <div class="wrap">
+    <div class="glass final reveal">
+      <h2>Love the app? This is where it’s going next.</h2>
+      <p class="sub" style="margin:0 auto 24px">Aurora Pocket takes the same idea, your own music played beautifully, off the screen and into your pocket.</p>
+      <div class="cta">
+        <a class="btn accent" href="../">Try Aurora today</a>
+        <a class="btn ghost" href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">Follow on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>Aurora Pocket · a V1 prototype design · part of the Aurora open-source project</div>
+    <div><a href="../">Aurora</a> · <a href="../downloads/">Downloads</a> · <a href="../app/">Web app</a> · <a href="https://github.com/Kailu687/Aurora" target="_blank" rel="noopener">GitHub</a></div>
+  </div>
+</footer>
+<script src="../assets/site.js"></script>
+</body>
+</html>
