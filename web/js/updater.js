@@ -11,7 +11,7 @@
   const LIVE = 'aurora-live', STAGED = 'aurora-staged';
   // Public half of the Aurora update signing key (ECDSA P-256, SPKI, base64). Updates not signed with the matching
   // private key are refused. Stamped by tools/publish-web.js from the key it signs with.
-  const UPDATE_KEY = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoFv7LOHk9Qaqrlm2+8PafQ428Zaw4cMnXgPXmV5UxL8Ex9ekcs844XwvXqeT5wVy8QZkvkh3lVzHNKqtHIp2NQ==';
+  const UPDATE_KEY = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwfLIbeph/bWLpFKGZXqOw8fZ9DmydoKExAz+FEWyMXHyzIsWeNVV0pdxOKZ+2yea2cOd01aiPDA6Oq8kiAh5Rg==';
   // Android app builds and Windows versions from before the app could report its own version
   const LEGACY_ANDROID_BUILD = 19, LEGACY_WINDOWS_VERSION = '1.6.2';
   A.DOWNLOADS_URL = 'https://kailashamarnath.me/Aurora/downloads/';
