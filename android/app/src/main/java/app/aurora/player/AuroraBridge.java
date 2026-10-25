@@ -38,6 +38,15 @@ public class AuroraBridge {
         b.main.post(() -> b.web.evaluateJavascript("window.A&&A.nativeEvent&&A.nativeEvent('" + event + "'," + json + ")", null));
     }
 
+    /** The installed app's version code, so the web app can tell when a newer APK is out. */
+    @JavascriptInterface
+    public String appBuild() {
+        try {
+            android.content.pm.PackageInfo pi = act.getPackageManager().getPackageInfo(act.getPackageName(), 0);
+            return String.valueOf(Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode);
+        } catch (Exception e) { return "0"; }
+    }
+
     // ----- music folder (Storage Access Framework): linked, never copied -----
     @JavascriptInterface
     public String pickFolder() { main.post(() -> treeLauncher.launch(null)); return "ok"; }

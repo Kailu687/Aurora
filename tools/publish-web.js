@@ -11,13 +11,42 @@
 //          /downloads/       download page + Aurora.apk + checksums
 //          /releases.json    data for the download page (changelog + sizes + SHA-256)
 //        GitHub Actions runs this on every push (see .github/workflows/pages.yml).
-const fs = require('fs'), path = require('path');
+//
+//   The update feed is signed (ECDSA P-256) so installed apps only accept updates made by you. The private key comes
+//   from the AURORA_UPDATE_KEY environment variable (a GitHub Actions secret) or the file named by
+//   AURORA_UPDATE_KEY_FILE (default: ../Aurora-keys/update-signing-key.pem). The public half is stamped into
+//   web/js/updater.js and electron/update-key.txt by --stamp-only.
+//
+//   node tools/publish-web.js --new-key      Make a new signing key pair in ../Aurora-keys (only ever once).
+const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const root = path.join(__dirname, '..'), web = path.join(root, 'web');
 const arg = (k) => { const i = process.argv.indexOf('--' + k); return i > -1 ? process.argv[i + 1] : undefined; };
 const flag = (k) => process.argv.includes('--' + k);
 const REPO = 'Kailu687/Aurora';
 const changelogPath = path.join(root, 'docs', 'changelog.json');
+const keyFile = process.env.AURORA_UPDATE_KEY_FILE || path.join(root, '..', 'Aurora-keys', 'update-signing-key.pem');
+function privateKey() {
+  const pem = process.env.AURORA_UPDATE_KEY || (fs.existsSync(keyFile) ? fs.readFileSync(keyFile, 'utf8') : '');
+  return pem.trim() ? crypto.createPrivateKey(pem) : null;
+}
+const publicB64 = (k) => crypto.createPublicKey(k).export({ type: 'spki', format: 'der' }).toString('base64');
+// Must match A.signedPayload in web/js/updater.js and signedPayload in electron/main.js
+const signedPayload = (m) => JSON.stringify({ name: m.name, build: m.build, notes: m.notes, published: m.published, files: m.files.map((f) => ({ path: f.path, size: f.size, sha256: f.sha256 })), native: m.native || null });
+function stampKey(pub) {
+  const up = path.join(web, 'js', 'updater.js');
+  fs.writeFileSync(up, fs.readFileSync(up, 'utf8').replace(/const UPDATE_KEY = '[^']*';/, `const UPDATE_KEY = '${pub}';`));
+  fs.writeFileSync(path.join(root, 'electron', 'update-key.txt'), pub + '\n');
+}
 
+if (flag('new-key')) {
+  if (fs.existsSync(keyFile)) { console.error('A key already exists at ' + keyFile + '. Delete it first only if you really mean to replace it.'); process.exit(1); }
+  const { privateKey: k } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  fs.mkdirSync(path.dirname(keyFile), { recursive: true });
+  fs.writeFileSync(keyFile, k.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+  stampKey(publicB64(k));
+  console.log('New signing key written to ' + keyFile + '. Add its contents as the AURORA_UPDATE_KEY secret on GitHub, and back it up.');
+  process.exit(0);
+}
 const vf = path.join(web, 'js', 'version.js');
 let vsrc = fs.readFileSync(vf, 'utf8');
 let name = /name:\s*'([^']+)'/.exec(vsrc)[1];
@@ -41,6 +70,8 @@ if (flag('stamp-only')) {
   const entry = { version: name, date: new Date().toISOString().slice(0, 10), notes: bullets };
   const at = log.findIndex((e) => e.version === name); if (at > -1) log[at] = entry; else log.unshift(entry);
   fs.writeFileSync(changelogPath, JSON.stringify(log, null, 2) + '\n');
+  fs.writeFileSync(path.join(web, 'changelog.json'), JSON.stringify(log.slice(0, 12), null, 1) + '\n');
+  const k = privateKey(); if (k) stampKey(publicB64(k));
   console.log(`Version is now ${name} (build ${build}). Next: npm run android, then commit and push.`);
   process.exit(0);
 }
@@ -64,8 +95,25 @@ const files = [];
   }
 })(web, '');
 for (const f of files) { const dest = path.join(appOut, f); fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.copyFileSync(path.join(web, f), dest); }
-const listed = files.filter((f) => f !== 'sw.js').map((f) => ({ path: f, size: fs.statSync(path.join(web, f)).size }));
-fs.writeFileSync(path.join(appOut, 'update-manifest.json'), JSON.stringify({ name, build, notes, published: new Date().toISOString(), files: listed }, null, 1));
+const listed = files.filter((f) => f !== 'sw.js').map((f) => { const b = fs.readFileSync(path.join(web, f)); return { path: f, size: b.length, sha256: crypto.createHash('sha256').update(b).digest('hex') }; });
+// What the newest Android app / Windows installer is, so older installs can be told a new one exists
+const hashesF = path.join(root, 'downloads', 'hashes.json'), hj = fs.existsSync(hashesF) ? JSON.parse(fs.readFileSync(hashesF, 'utf8')) : {};
+const DL_PAGE = 'https://kailashamarnath.me/Aurora/downloads/';
+const native = {
+  ...(hj.android && hj.android.build ? { android: { build: hj.android.build, version: hj.version, url: DL_PAGE, notes: hj.android.notes || '' } } : {}),
+  ...(hj.windows ? { windows: { version: hj.version, url: DL_PAGE, notes: hj.windows.notes || '' } } : {})
+};
+const manifest = { name, build, notes, published: new Date().toISOString(), files: listed, native: Object.keys(native).length ? native : null };
+const key = privateKey();
+if (key) {
+  const pub = publicB64(key), stamped = (/const UPDATE_KEY = '([^']*)';/.exec(fs.readFileSync(path.join(web, 'js', 'updater.js'), 'utf8')) || [])[1];
+  if (stamped !== pub) { console.error('The signing key does not match the public key in web/js/updater.js. Run npm run bump on the PC that has the key.'); process.exit(1); }
+  manifest.sig = crypto.sign('sha256', Buffer.from(signedPayload(manifest)), { key, dsaEncoding: 'ieee-p1363' }).toString('base64');
+} else if (process.env.GITHUB_ACTIONS) {
+  console.error('No update signing key: add the AURORA_UPDATE_KEY secret (Settings > Secrets and variables > Actions). Without it installed apps refuse the update.');
+  process.exit(1);
+} else console.warn('Warning: no signing key found, update-manifest.json is unsigned (installed apps will refuse it).');
+fs.writeFileSync(path.join(appOut, 'update-manifest.json'), JSON.stringify(manifest, null, 1));
 
 // 3) release binaries (each must be < 100 MB for GitHub Pages) at /downloads/
 const dl = path.join(root, 'downloads');

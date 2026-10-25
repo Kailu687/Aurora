@@ -1,32 +1,111 @@
 // Aurora desktop shell. Serves the web app from a private app:// scheme (so WebAudio, IndexedDB and
 // range-seeking all behave like a real origin) and exposes the user's music folders via app://local/__lib/.
-const { app, BrowserWindow, protocol, dialog, ipcMain, shell, globalShortcut, Menu } = require('electron');
+const { app, BrowserWindow, protocol, dialog, ipcMain, shell, globalShortcut, Menu, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const WEB = path.join(__dirname, '..', 'web');
 const AUDIO = /\.(mp3|m4a|mp4|m4b|aac|wav|flac|ogg|oga|opus|webm|weba)$/i;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-const allowedRoots = new Set(); // folders the user picked this session or in a past one
+const userFile = (name) => path.join(app.getPath('userData'), name);
+const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
+const writeJSON = (f, v) => { const tmp = f + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(v)); fs.renameSync(tmp, f); };
 
-// ---- cloud updates: downloaded web files live in userData/web-live and win over the bundled ones ----
-const bundledBuild = () => { try { return parseInt(/build:\s*(\d+)/.exec(fs.readFileSync(path.join(WEB, 'js', 'version.js'), 'utf8'))[1], 10); } catch { return 0; } };
-const liveDir = () => path.join(app.getPath('userData'), 'web-live');
-function liveActive() {
-  try { const m = JSON.parse(fs.readFileSync(path.join(liveDir(), 'meta.json'), 'utf8')); if (m.build > bundledBuild()) return true; fs.rmSync(liveDir(), { recursive: true, force: true }); } catch { /* none */ }
+// ---- music folders the user picked (or dropped). Only files inside them are ever served or scanned. ----
+const allowed = { roots: new Set(), files: new Set(), migrated: false };
+const normDir = (p) => path.resolve(p).toLowerCase().replace(/[\\/]+$/, '') + path.sep;
+function loadAllowed() {
+  const s = readJSON(userFile('folders.json'), null);
+  if (s) { (s.roots || []).forEach((r) => allowed.roots.add(r)); (s.files || []).forEach((f) => allowed.files.add(f)); allowed.migrated = true; }
+}
+const saveAllowed = () => { try { writeJSON(userFile('folders.json'), { roots: [...allowed.roots], files: [...allowed.files].slice(-2000) }); allowed.migrated = true; } catch { /* read-only profile */ } };
+function allowPath(p) {
+  if (!p || !path.isAbsolute(p)) return;
+  let st; try { st = fs.statSync(p); } catch { return; }
+  if (st.isDirectory()) allowed.roots.add(path.resolve(p)); else allowed.files.add(path.resolve(p).toLowerCase());
+  saveAllowed();
+}
+function isAllowed(file) {
+  const f = path.resolve(file).toLowerCase();
+  if (allowed.files.has(f)) return true;
+  for (const r of allowed.roots) if (f.startsWith(normDir(r))) return true;
   return false;
 }
-async function applyUpdate(base, manifest) {
-  const tmp = liveDir() + '.tmp'; fs.rmSync(tmp, { recursive: true, force: true });
-  for (const f of manifest.files) {
+
+// ---- cloud updates: downloaded web files live in userData/web-live and win over the bundled ones ----
+// Every update feed must be signed with the Aurora update key. The public half is pinned here, in the installed
+// program, so a hacked website or GitHub account can't push code to anyone's PC.
+const UPDATE_KEY = fs.existsSync(path.join(__dirname, 'update-key.txt')) ? fs.readFileSync(path.join(__dirname, 'update-key.txt'), 'utf8').trim() : '';
+const signedPayload = (m) => JSON.stringify({ name: m.name, build: m.build, notes: m.notes, published: m.published, files: m.files.map((f) => ({ path: f.path, size: f.size, sha256: f.sha256 })), native: m.native || null });
+function verifyManifest(m) {
+  if (!UPDATE_KEY) throw new Error('This copy of Aurora has no update key');
+  if (!m || typeof m.build !== 'number' || !Array.isArray(m.files) || !m.sig) throw new Error('Update is not signed');
+  const key = crypto.createPublicKey({ key: Buffer.from(UPDATE_KEY, 'base64'), format: 'der', type: 'spki' });
+  const ok = crypto.verify('sha256', Buffer.from(signedPayload(m)), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(m.sig, 'base64'));
+  if (!ok) throw new Error('Update signature is not valid');
+  return true;
+}
+const bundledBuild = () => { try { return parseInt(/build:\s*(\d+)/.exec(fs.readFileSync(path.join(WEB, 'js', 'version.js'), 'utf8'))[1], 10); } catch { return 0; } };
+const liveDir = () => userFile('web-live');
+const stagedDir = () => userFile('web-staged');
+let liveOn = false;
+// Runs once at start-up: installs an update that was downloaded earlier, drops one that keeps failing to start,
+// and drops one that is older than the version this installer shipped with.
+function prepareLive() {
+  const bb = bundledBuild();
+  try {
+    const sm = readJSON(path.join(stagedDir(), 'meta.json'), null);
+    if (sm && sm.build > bb) { fs.rmSync(liveDir(), { recursive: true, force: true }); fs.renameSync(stagedDir(), liveDir()); }
+    else fs.rmSync(stagedDir(), { recursive: true, force: true });
+  } catch { /* nothing staged */ }
+  const metaF = path.join(liveDir(), 'meta.json'), m = readJSON(metaF, null);
+  if (!m) return (liveOn = false);
+  if (m.build <= bb || (m.tries || 0) >= 3) { fs.rmSync(liveDir(), { recursive: true, force: true }); return (liveOn = false); }
+  m.tries = (m.tries || 0) + 1; try { writeJSON(metaF, m); } catch { /* */ }
+  return (liveOn = true);
+}
+function bootOk() {
+  if (!liveOn) return;
+  const metaF = path.join(liveDir(), 'meta.json'), m = readJSON(metaF, null);
+  if (m && m.tries) { m.tries = 0; try { writeJSON(metaF, m); } catch { /* */ } }
+}
+async function fetchBuf(url) {
+  if (!/^https:\/\//i.test(url)) throw new Error('Updates only come over HTTPS');
+  const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return Buffer.from(await r.arrayBuffer());
+}
+// Downloads and checks the whole update, then puts it in web-staged. It becomes active on the next start
+// (or straight away when the user presses Restart). Nothing in the user's library is touched.
+async function downloadUpdate(base) {
+  if (!/^https:\/\//i.test(base || '')) throw new Error('Bad update address');
+  base = base.replace(/\/?$/, '/');
+  const m = JSON.parse((await fetchBuf(base + 'update-manifest.json?t=' + Date.now())).toString('utf8'));
+  verifyManifest(m);
+  if (m.build <= Math.max(bundledBuild(), (readJSON(path.join(liveDir(), 'meta.json'), {}) || {}).build || 0)) return { build: m.build, already: true };
+  const tmp = stagedDir() + '.tmp'; fs.rmSync(tmp, { recursive: true, force: true });
+  for (const f of m.files) {
     if (/\.\.|^[\\/]|:/.test(f.path)) throw new Error('Bad path in update: ' + f.path);
-    const r = await fetch(base + f.path + '?v=' + manifest.build, { cache: 'reload' }); if (!r.ok) throw new Error(`${f.path}: HTTP ${r.status}`);
-    const buf = Buffer.from(await r.arrayBuffer()); if (f.size && buf.length !== f.size) throw new Error(`${f.path}: size mismatch`);
+    const buf = await fetchBuf(base + f.path + '?v=' + m.build);
+    if (buf.length !== f.size) throw new Error(`${f.path}: size mismatch`);
+    if (crypto.createHash('sha256').update(buf).digest('hex') !== f.sha256) throw new Error(`${f.path}: checksum mismatch`);
     const dest = path.join(tmp, f.path); fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, buf);
   }
-  fs.writeFileSync(path.join(tmp, 'meta.json'), JSON.stringify({ build: manifest.build, name: manifest.name }));
-  fs.rmSync(liveDir(), { recursive: true, force: true }); fs.renameSync(tmp, liveDir());
-  return true;
+  fs.writeFileSync(path.join(tmp, 'meta.json'), JSON.stringify({ build: m.build, name: m.name, tries: 0 }));
+  fs.rmSync(stagedDir(), { recursive: true, force: true }); fs.renameSync(tmp, stagedDir());
+  return { build: m.build, name: m.name };
+}
+
+// ---- secrets (the optional Claude API key), encrypted with the Windows user account ----
+const secretsF = () => userFile('secrets.json');
+function getSecret(k) {
+  const s = readJSON(secretsF(), {}); if (!s[k]) return '';
+  try { return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(s[k], 'base64')) : ''; } catch { return ''; }
+}
+function setSecret(k, v) {
+  const s = readJSON(secretsF(), {});
+  if (!v) delete s[k]; else { if (!safeStorage.isEncryptionAvailable()) return false; s[k] = safeStorage.encryptString(String(v)).toString('base64'); }
+  writeJSON(secretsF(), s); return true;
 }
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
@@ -74,7 +153,7 @@ function createWindow() {
     width: 1360, height: 860, minWidth: 380, minHeight: 560, backgroundColor: '#07070c', show: false, autoHideMenuBar: true,
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#00000000', symbolColor: '#ffffff', height: 40 },
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }
   });
   win.once('ready-to-show', () => win.show());
   win.loadURL('app://local/index.html');
@@ -82,33 +161,46 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); } });
   return win;
 }
+const fromApp = (e) => { try { return new URL(e.senderFrame.url).protocol === 'app:'; } catch { return false; } };
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  loadAllowed(); prepareLive();
   protocol.handle('app', async (req) => {
     const u = new URL(req.url); const p = decodeURIComponent(u.pathname);
     if (p.startsWith('/__lib/')) {
       const file = decodeURIComponent(p.slice(7));
-      const ok = (AUDIO.test(file) || /\.lrc$/i.test(file)) && path.isAbsolute(file);
+      const ok = (AUDIO.test(file) || /\.lrc$/i.test(file)) && path.isAbsolute(file) && isAllowed(file);
       if (!ok) return new Response('Forbidden', { status: 403 });
       return serveFile(file, req.headers.get('range'));
     }
     const rel = p === '/' ? 'index.html' : p.replace(/^\/+/, '');
     let root = WEB;
-    if (liveActive() && fs.existsSync(path.join(liveDir(), rel))) root = liveDir();
+    if (liveOn && fs.existsSync(path.join(liveDir(), rel))) root = liveDir();
     const file = path.normalize(path.join(root, rel));
     if (!file.startsWith(root)) return new Response('Forbidden', { status: 403 });
     try { const data = await fs.promises.readFile(file); return new Response(data, { headers: { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' } }); }
     catch { return new Response('Not found', { status: 404 }); }
   });
 
-  ipcMain.handle('pick-folder', async (e) => {
+  const handle = (name, fn) => ipcMain.handle(name, (e, ...a) => { if (!fromApp(e)) throw new Error('Not allowed'); return fn(e, ...a); });
+  handle('pick-folder', async (e) => {
     const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), { title: 'Choose your music folder', properties: ['openDirectory'] });
-    if (r.canceled || !r.filePaths[0]) return null; allowedRoots.add(r.filePaths[0]); return r.filePaths[0];
+    if (r.canceled || !r.filePaths[0]) return null; allowPath(r.filePaths[0]); return r.filePaths[0];
   });
-  ipcMain.handle('scan', async (e, root) => scan(root));
-  ipcMain.handle('fetch-json', async (e, url) => { if (!/^https?:\/\//i.test(url)) throw new Error('Bad URL'); const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
-  ipcMain.handle('apply-update', async (e, base, manifest) => applyUpdate(base, manifest));
+  handle('scan', async (e, root) => (typeof root === 'string' && isAllowed(path.join(root, 'x.mp3')) ? scan(root) : []));
+  // First start after updating from a version without the folder list: adopt the folders the library already uses, once.
+  handle('adopt-roots', async (e, roots) => { if (allowed.migrated || !Array.isArray(roots)) return false; roots.filter((r) => typeof r === 'string').forEach((r) => { try { if (fs.statSync(r).isDirectory()) allowed.roots.add(path.resolve(r)); } catch { /* gone */ } }); saveAllowed(); return true; });
+  handle('fetch-json', async (e, url) => JSON.parse((await fetchBuf(url)).toString('utf8')));
+  handle('download-update', async (e, base) => downloadUpdate(base));
+  handle('apply-update', async (e, base) => downloadUpdate(base)); // older web code calls this name
+  handle('boot-ok', async () => bootOk());
+  handle('shell-info', async () => ({ version: app.getVersion(), build: bundledBuild(), signed: !!UPDATE_KEY, secrets: safeStorage.isEncryptionAvailable() }));
+  handle('secret-get', async (e, k) => getSecret(String(k)));
+  handle('secret-set', async (e, k, v) => setSecret(String(k), v ? String(v) : ''));
+  handle('save-snapshot', async (e, json) => { if (typeof json !== 'string' || json.length > 20e6) return false; const dir = userFile('backups'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'aurora-backup-' + new Date().toISOString().slice(0, 10) + '.json'), json); const all = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort(); all.slice(0, -10).forEach((f) => fs.rmSync(path.join(dir, f), { force: true })); return true; });
+  handle('relaunch', async () => { app.relaunch(); app.exit(0); });
+  ipcMain.on('allow-path', (e, p) => { if (fromApp(e) && typeof p === 'string') allowPath(p); e.returnValue = true; });
 
   const win = createWindow();
   app.on('second-instance', () => { if (win.isMinimized()) win.restore(); win.focus(); });
@@ -119,5 +211,3 @@ app.whenReady().then(() => {
 });
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('window-all-closed', () => app.quit());
-
-

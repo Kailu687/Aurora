@@ -66,7 +66,10 @@
       });
       this.decks.forEach((d) => {
         d.node = ctx.createMediaElementSource(d.el); d.gain = ctx.createGain(); d.gain.gain.value = d === this.deck ? 1 : 0;
-        d.node.connect(d.gain);
+        // per-deck DJ filters: a high-pass for sweeps and a low shelf for bass swaps (both neutral unless a mix uses them)
+        d.hp = ctx.createBiquadFilter(); d.hp.type = 'highpass'; d.hp.frequency.value = 10; d.hp.Q.value = 0.7;
+        d.bass = ctx.createBiquadFilter(); d.bass.type = 'lowshelf'; d.bass.frequency.value = 180; d.bass.gain.value = 0;
+        d.node.connect(d.hp); d.hp.connect(d.bass); d.bass.connect(d.gain);
       });
       let prev = null;
       this.eq.forEach((b) => { if (prev) prev.connect(b); prev = b; });
@@ -163,7 +166,54 @@
       this.emit('meta'); this.emit('state');
       this._xt = setTimeout(() => { from.el.pause(); from.gain.gain.value = 0; this.xfading = false; }, secs * 1000 + 80);
     }
-    _cancelXfade() { clearTimeout(this._xt); clearInterval(this._xi); this.xfading = false; }
+    _cancelXfade() { clearTimeout(this._xt); clearInterval(this._xi); this.mixing = null; this.xfading = false; this._resetFilters(); }
+    _resetFilters() { if (this.direct || !this.ctx) return; const t = this.ctx.currentTime; this.decks.forEach((d) => { d.hp.frequency.cancelScheduledValues(t); d.hp.frequency.setValueAtTime(10, t); d.bass.gain.cancelScheduledValues(t); d.bass.gain.setValueAtTime(0, t); }); }
+
+    // DJ mix: start the next track on the idle deck at startAt, tempo-matched (rate), and blend over `blend` seconds.
+    // style 'swap': both basslines never play at once (incoming bass is cut, then swapped halfway).
+    // style 'cut': no tempo match possible, so the outgoing track gets a high-pass sweep and drops out on the beat.
+    async mixTo(track, urlP, { startAt = 0, blend = 8, rate = 1, style = 'swap' } = {}) {
+      this.init(); await this.resume();
+      if (this.xfading) this._cancelXfade();
+      const from = this.deck, to = this.other;
+      if (!(this.preloaded && this.preloaded.id === track.id)) await this.loadInto(to, track, urlP, false, startAt);
+      else to.el.currentTime = startAt;
+      this.preloaded = null; this.xfading = true;
+      to.el.playbackRate = rate; to.el.preservesPitch = true;
+      const nTo = this.normalize ? to.norm : 1, nFrom = this.normalize ? from.norm : 1;
+      this.mixing = { from, to, t0: performance.now(), blend, style };
+      if (this.direct) {
+        to.level = 0; this._applyDirect(to); try { await to.el.play(); } catch { /* */ }
+        this.cur = 1 - this.cur; this.emit('meta'); this.emit('state');
+        const t0 = performance.now(); clearInterval(this._xi);
+        this._xi = setInterval(() => {
+          const p = Math.min(1, (performance.now() - t0) / (blend * 1000));
+          to.level = style === 'cut' ? Math.min(1, p * 4) : Math.min(1, p * 2); from.level = style === 'cut' ? 1 - Math.min(1, p * 1.5) : p < 0.5 ? 1 : 1 - (p - 0.5) * 2;
+          this._applyDirect(to); this._applyDirect(from);
+          if (p >= 1) { clearInterval(this._xi); from.el.pause(); from.level = 0; this._applyDirect(from); this.xfading = false; this.mixing = null; }
+        }, 40);
+        return;
+      }
+      const t = this.ctx.currentTime, half = t + blend / 2, end = t + blend, g = (d) => d.gain.gain;
+      [to, from].forEach((d) => { g(d).cancelScheduledValues(t); d.hp.frequency.cancelScheduledValues(t); d.bass.gain.cancelScheduledValues(t); });
+      g(to).setValueAtTime(0.0001, t); d0(to.hp.frequency, 10, t); d0(from.hp.frequency, 10, t); d0(from.bass.gain, 0, t);
+      if (style === 'cut') {
+        d0(to.bass.gain, 0, t); g(to).linearRampToValueAtTime(nTo, t + Math.min(0.6, blend / 3));
+        g(from).setValueAtTime(nFrom, t); from.hp.frequency.exponentialRampToValueAtTime(900, t + blend * 0.7); g(from).linearRampToValueAtTime(0.0001, end);
+      } else {
+        to.bass.gain.setValueAtTime(-26, t); g(to).linearRampToValueAtTime(nTo, half);
+        g(from).setValueAtTime(nFrom, half);
+        // the swap: over one beat-ish, the incoming bass comes in as the outgoing bass goes out
+        to.bass.gain.setValueAtTime(-26, half); to.bass.gain.linearRampToValueAtTime(0, half + 0.4);
+        from.bass.gain.setValueAtTime(0, half); from.bass.gain.linearRampToValueAtTime(-26, half + 0.4);
+        g(from).linearRampToValueAtTime(0.0001, end);
+      }
+      try { await to.el.play(); } catch { /* */ }
+      this.cur = 1 - this.cur; this.emit('meta'); this.emit('state');
+      clearTimeout(this._xt);
+      this._xt = setTimeout(() => { from.el.pause(); from.gain.gain.value = 0; from.hp.frequency.value = 10; from.bass.gain.value = 0; this.xfading = false; this.mixing = null; }, blend * 1000 + 120);
+    }
+    setDeckRate(d, r) { d.el.playbackRate = r; d.el.preservesPitch = true; }
 
     pause() { this.deck.el.pause(); if (this.xfading) { this.other.el.pause(); } }
     async resumePlay() { await this.resume(); return this.deck.el.play(); }
@@ -194,5 +244,6 @@
       return out;
     }
   }
+  function d0(param, v, t) { param.setValueAtTime(v, t); }
   A.engine = new Engine();
 })(window.A);

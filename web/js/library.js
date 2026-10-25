@@ -9,7 +9,7 @@
     _cache: null, listeners: new Set(), scanning: false
   };
   L.on = (fn) => L.listeners.add(fn);
-  const changed = () => { L._cache = null; L.listeners.forEach((f) => f()); };
+  const changed = () => { L._cache = null; L.refreshSmart(); L.listeners.forEach((f) => f()); };
   L.changed = changed;
 
   // ---------- load ----------
@@ -28,7 +28,7 @@
     if (vals.length) await A.db.putMany('tracks', vals);
   }
   window.addEventListener('pagehide', flush);
-  L.savePlaylists = () => A.store.set('playlists', L.playlists);
+  L.savePlaylists = () => { A.store.set('playlists', L.playlists); if (A.safety) A.safety.mirror('playlists', L.playlists); };
 
   // ---------- art ----------
   L.artUrl = (t) => (t && t.artKey ? L.artUrls.get(t.artKey) || '' : '');
@@ -41,11 +41,12 @@
     const d = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(''); fr.readAsDataURL(blob); });
     if (d) { L.artUrls.set(key, d); img.src = d; }
   };
+  document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.closest('.cover')) L.coverFail(t); }, true); // no inline handlers: the CSP forbids them
   L.artFor = (item) => { // album/artist/playlist objects -> first track with art
     const ts = item.tracks || []; for (const id of ts) { const t = typeof id === 'string' ? L.byId.get(id) : id; const u = t && L.artUrl(t); if (u) return u; } return '';
   };
   L.coverHTML = (url, seed, cls = '') => url
-    ? `<div class="cover ${cls}"><img decoding="async" src="${url}" alt="" onerror="A.lib.coverFail(this)"></div>`
+    ? `<div class="cover ${cls}"><img decoding="async" src="${url}" alt=""></div>`
     : `<div class="cover ph ${cls}" style="${A.coverStyle(seed)}">${A.icon('music')}</div>`;
 
   // ---------- sources ----------
@@ -360,10 +361,39 @@
   };
 
   // ---------- playlists ----------
-  L.newPlaylist = (name, ids = []) => { const p = { id: 'p' + A.uid(), name: name || 'New playlist', tracks: ids.slice(), created: Date.now() }; L.playlists.unshift(p); L.savePlaylists(); changed(); return p; };
-  L.addToPlaylist = (p, ids) => { let n = 0; ids.forEach((i) => { if (!p.tracks.includes(i)) { p.tracks.push(i); n++; } }); L.savePlaylists(); changed(); return n; };
+  L.newPlaylist = (name, ids = [], rules = null) => { const p = { id: 'p' + A.uid(), name: name || 'New playlist', tracks: ids.slice(), created: Date.now(), ...(rules ? { rules } : {}) }; L.playlists.unshift(p); L.savePlaylists(); changed(); return p; };
+  L.addToPlaylist = (p, ids) => { if (p.rules) return 0; let n = 0; ids.forEach((i) => { if (!p.tracks.includes(i)) { p.tracks.push(i); n++; } }); L.savePlaylists(); changed(); return n; };
   L.removeFromPlaylist = (p, id) => { p.tracks = p.tracks.filter((i) => i !== id); L.savePlaylists(); changed(); };
   L.deletePlaylist = (p) => { L.playlists = L.playlists.filter((x) => x !== p); L.savePlaylists(); changed(); };
+
+  // ---------- smart playlists: rules instead of a fixed list, kept up to date as the library changes ----------
+  const DAYMS = 864e5;
+  L.SMART_FIELDS = {
+    genre: { label: 'Genre', type: 'text' }, artist: { label: 'Artist', type: 'text' }, album: { label: 'Album', type: 'text' }, title: { label: 'Title', type: 'text' },
+    year: { label: 'Year', type: 'num' }, plays: { label: 'Play count', type: 'num' }, energy: { label: 'Energy (0-100)', type: 'num' }, tempo: { label: 'Tempo (BPM)', type: 'num' },
+    duration: { label: 'Length (minutes)', type: 'num' }, liked: { label: 'Liked', type: 'bool' }, added: { label: 'Added', type: 'days' }, last: { label: 'Last played', type: 'days' }
+  };
+  L.SMART_OPS = { text: [['has', 'contains'], ['is', 'is'], ['not', 'doesn’t contain']], num: [['gte', 'at least'], ['lte', 'at most'], ['eq', 'exactly']], bool: [['yes', 'yes'], ['no', 'no']], days: [['within', 'in the last (days)'], ['older', 'not in the last (days)']] };
+  const fieldVal = (t, f) => ({ energy: t.an ? Math.round(t.an.energy * 100) : null, tempo: t.an && t.an.tempo ? t.an.tempo : null, duration: (t.duration || 0) / 60 }[f] ?? t[f]);
+  L.matchRule = (t, c) => {
+    const def = L.SMART_FIELDS[c.f]; if (!def) return true;
+    const v = fieldVal(t, c.f), n = parseFloat(c.v), now = Date.now();
+    if (def.type === 'text') { const hay = A.norm(c.f === 'artist' ? t.artist + ' ' + (t.albumArtist || '') : v), q = A.norm(c.v || '').trim(); if (!q) return true; return c.op === 'is' ? hay === q || (c.f === 'artist' && A.splitArtists(t.artist).some((a) => A.norm(a) === q)) : c.op === 'not' ? !hay.includes(q) : hay.includes(q); }
+    if (def.type === 'bool') return c.op === 'yes' ? !!v : !v;
+    if (def.type === 'days') { if (!isFinite(n)) return true; const age = v ? (now - v) / DAYMS : Infinity; return c.op === 'within' ? age <= n : age > n; }
+    if (v == null || !isFinite(n)) return false; return c.op === 'gte' ? v >= n : c.op === 'lte' ? v <= n : Math.round(v) === Math.round(n);
+  };
+  L.smartTracks = (rules) => {
+    const conds = (rules.conds || []).filter((c) => c && c.f);
+    let out = L.tracks.filter((t) => !conds.length || (rules.match === 'any' ? conds.some((c) => L.matchRule(t, c)) : conds.every((c) => L.matchRule(t, c))));
+    const by = rules.sort || 'random';
+    if (by === 'random') { const r = seeded(new Date().toISOString().slice(0, 10) + (rules.seed || '')); out = out.map((t) => [r(), t]).sort((a, b) => a[0] - b[0]).map((x) => x[1]); }
+    else if (by === 'title') out.sort((a, b) => a.title.localeCompare(b.title));
+    else if (by === 'energy') out.sort((a, b) => ((b.an && b.an.energy) || 0) - ((a.an && a.an.energy) || 0));
+    else out.sort((a, b) => (b[by] || 0) - (a[by] || 0));
+    return out.slice(0, Math.max(1, Math.min(1000, +rules.limit || 100)));
+  };
+  L.refreshSmart = () => { for (const p of L.playlists) if (p.rules) p.tracks = L.smartTracks(p.rules).map((t) => t.id); };
 
   // ---------- lyrics ----------
   L.lyricsFor = async function (t) {
@@ -382,6 +412,17 @@
 
   // ---------- smart mixes ----------
   function seeded(seed) { let s = parseInt(A.hash(seed).slice(0, 7), 36) || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  // Songs played on today's date in an earlier month or year (newest first)
+  L.onThisDay = function () {
+    const d = new Date(), hist = (A.player && A.player.hist) || [], seen = new Set(), tracks = []; let oldest = null;
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const [id, at] = hist[i], h = new Date(at);
+      if (h.getDate() !== d.getDate() || (h.getMonth() === d.getMonth() && h.getFullYear() === d.getFullYear())) continue;
+      const t = L.byId.get(id); if (!t || seen.has(id)) continue; seen.add(id); tracks.push(t); oldest = h;
+    }
+    const label = !oldest ? '' : oldest.getFullYear() < d.getFullYear() ? `What you played on ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}, back in ${oldest.getFullYear()}` : `What you played on the ${d.getDate()}${['th', 'st', 'nd', 'rd'][(d.getDate() % 10 > 3 || Math.floor(d.getDate() / 10) === 1) ? 0 : d.getDate() % 10]} of earlier months`;
+    return { tracks: tracks.slice(0, 40), label, year: oldest && oldest.getFullYear() };
+  };
   L.mixes = function () {
     if (L.tracks.length < 6) return [];
     const day = new Date().toISOString().slice(0, 10), out = [];
@@ -397,6 +438,10 @@
     const calm = an.filter((t) => t.an.energy < 0.38), hype = an.filter((t) => t.an.energy > 0.68);
     if (calm.length >= 5) out.push({ id: 'mix-calm', name: 'Chill Mix', sub: 'Low energy, high comfort', tracks: sample(calm, 40, 'calm').map((t) => t.id) });
     if (hype.length >= 5) out.push({ id: 'mix-hype', name: 'Power Mix', sub: 'High energy only', tracks: sample(hype, 40, 'hype').map((t) => t.id) });
+    // memory lane: favourites that went quiet, and what you played on this day in earlier months and years
+    const now = Date.now(), quiet = L.tracks.filter((t) => (t.liked || t.plays >= 3) && t.last && now - t.last > 45 * 864e5).sort((a, b) => b.plays - a.plays);
+    if (quiet.length >= 4) out.push({ id: 'mix-forgotten', name: 'Forgotten Favorites', sub: 'Loved once, quiet lately', tracks: quiet.slice(0, 40).map((t) => t.id) });
+    const otd = L.onThisDay(); if (otd.tracks.length >= 3) out.push({ id: 'mix-onthisday', name: 'On This Day', sub: otd.label, tracks: otd.tracks.map((t) => t.id) });
     const decades = new Map(); L.tracks.forEach((t) => { if (t.year > 1950) { const k = Math.floor(t.year / 10) * 10; (decades.get(k) || decades.set(k, []).get(k)).push(t); } });
     [...decades].filter(([, v]) => v.length >= 6).sort((a, b) => b[1].length - a[1].length).slice(0, 2).forEach(([k, v]) => out.push({ id: 'mix-' + k, name: `${k}s Throwback`, sub: 'Time capsule', tracks: sample(v, 40, 'dec' + k).map((t) => t.id) }));
     return out;

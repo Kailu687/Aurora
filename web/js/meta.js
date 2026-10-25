@@ -325,7 +325,61 @@
     const tempoN = A.clamp((tempo - 70) / 100, 0, 1);
     const onsetN = A.clamp((mean / (rms || 1)) * 5, 0, 1);
     const energy = A.clamp(0.5 * loud + 0.22 * tempoN + 0.16 * onsetN + 0.12 * bright, 0, 1);
-    return { energy: +energy.toFixed(3), tempo, bright: +bright.toFixed(3), rms: +rms.toFixed(4), pulse: +pulse.toFixed(3), loud: +loud.toFixed(3) };
+    let mix = null;
+    if (src.size <= 14e6) { try { mix = A.mixAnalysis(data, SRATE); } catch (e) { A.log('beat grid failed: ' + e.message); } }
+    if (mix) tempo = Math.round(mix.bpm);
+    return { energy: +energy.toFixed(3), tempo, bright: +bright.toFixed(3), rms: +rms.toFixed(4), pulse: +pulse.toFixed(3), loud: +loud.toFixed(3), mix };
+  };
+
+  // ---- DJ beat grid: exact tempo, where the beats and bars fall, and the song's structure ----
+  // Returns { v, bpm, beat0, bar0, bars: energy per bar 0-99, hook, i0, last } where phrases are 8 bars from bar0,
+  // hook = the strongest early phrase (usually the first chorus), i0 = first full-energy phrase, last = last full-energy phrase.
+  A.MIX_VERSION = 2;
+  A.mixAnalysis = function (data, SR) {
+    const dur = data.length / SR; if (dur < 30) return null;
+    const HOP = 256, fps = SR / HOP, N = Math.floor(data.length / HOP) - 1;
+    const full = new Float32Array(N), low = new Float32Array(N);
+    let lp = 0; const a = Math.exp(-2 * Math.PI * 150 / SR);
+    for (let f = 0; f < N; f++) {
+      let e = 0, b = 0; const o = f * HOP;
+      for (let i = 0; i < HOP; i++) { const v = data[o + i]; lp = a * lp + (1 - a) * v; e += v * v; b += lp * lp; }
+      full[f] = e; low[f] = b;
+    }
+    const onset = new Float32Array(N), bassOn = new Float32Array(N);
+    for (let f = 1; f < N; f++) {
+      const d1 = Math.log1p(1e3 * full[f]) - Math.log1p(1e3 * full[f - 1]), d2 = Math.log1p(1e4 * low[f]) - Math.log1p(1e4 * low[f - 1]);
+      onset[f] = Math.max(0, d1) + 1.5 * Math.max(0, d2); bassOn[f] = Math.max(0, d2);
+    }
+    let m = 0; for (let f = 0; f < N; f++) m += onset[f]; m /= N; for (let f = 0; f < N; f++) onset[f] -= m;
+    const at = (arr, x) => { const i = Math.floor(x), t = x - i; return i < 0 || i + 1 >= arr.length ? 0 : arr[i] * (1 - t) + arr[i + 1] * t; };
+    // 1) coarse tempo: autocorrelation, also rewarding 2x and 4x the beat length (bars repeat), biased to 85-165 BPM
+    const acf = (lag) => { let s = 0; for (let f = 0; f + lag < N; f += 2) s += onset[f] * at(onset, f + lag); return s; };
+    let best = -Infinity, bpm = 120;
+    for (let b = 70; b <= 180; b += 0.25) {
+      const L = (60 / b) * fps; const sc = (acf(L) + 0.5 * acf(2 * L) + 0.25 * acf(4 * L)) * (1 - 0.35 * Math.abs(Math.log2(b / 122)));
+      if (sc > best) { best = sc; bpm = b; }
+    }
+    // 2) fine tempo + beat phase: comb over the whole song
+    const comb = (P) => { let bs = -Infinity, bp = 0; for (let ph = 0; ph < P; ph += 0.5) { let s = 0; for (let x = ph; x < N; x += P) s += at(onset, x); if (s > bs) { bs = s; bp = ph; } } return [bs, bp]; };
+    let fb = -Infinity, fphase = 0;
+    for (let b = bpm - 1.2; b <= bpm + 1.2; b += 0.02) { const [sc, ph] = comb((60 / b) * fps); if (sc > fb) { fb = sc; fphase = ph; bpm = b; } }
+    const P = (60 / bpm) * fps, beat = 60 / bpm;
+    // 3) downbeat: the beat (of four) where the bass hits hardest
+    let bj = 0, bv = -1;
+    for (let j = 0; j < 4; j++) { let s = 0; for (let x = fphase + j * P; x < N; x += 4 * P) s += at(bassOn, x) + 0.5 * at(bassOn, x + 1); if (s > bv) { bv = s; bj = j; } }
+    const beat0 = (fphase / fps) % beat; let bar0 = (fphase + bj * P) / fps; while (bar0 - 4 * beat >= 0) bar0 -= 4 * beat;
+    // 4) energy per bar and 8-bar phrases
+    const barF = 4 * P, bars = [];
+    for (let x = bar0 * fps; x + barF <= N; x += barF) { let e = 0; for (let f = Math.floor(x); f < x + barF; f++) e += full[f]; bars.push(Math.sqrt(e / barF)); }
+    if (bars.length < 16) return null;
+    const mx = Math.max(...bars) || 1, barsN = bars.map((v) => Math.round((v / mx) * 99));
+    const ph = []; for (let i = 0; i + 8 <= barsN.length; i += 8) ph.push(barsN.slice(i, i + 8).reduce((s, v) => s + v, 0) / 8);
+    const pmax = Math.max(...ph), np = ph.length;
+    let hook = 0, hv = -1; ph.forEach((v, i) => { const pos = i / np; if (pos >= 0.12 && pos <= 0.85 && v >= pmax * 0.9 && hv < 0) { hook = i; hv = v; } });
+    if (hv < 0) hook = ph.indexOf(pmax);
+    let i0 = ph.findIndex((v) => v >= pmax * 0.55); if (i0 < 0) i0 = 0;
+    let last = np - 1; while (last > hook && ph[last] < pmax * 0.55) last--;
+    return { v: A.MIX_VERSION, bpm: +bpm.toFixed(2), beat0: +beat0.toFixed(3), bar0: +bar0.toFixed(3), bars: barsN, hook, i0, last, dur: +dur.toFixed(2) };
   };
 
   // ---- lyrics ----

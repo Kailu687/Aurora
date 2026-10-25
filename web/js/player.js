@@ -77,8 +77,9 @@
       if (this.repeat === 'all' && this.order.length && this.context.type !== 'dj') return this.order[0];
       return null;
     }
-    next(auto = false) {
+    next(auto = false, mix = null) {
       if (A.dj && this.context.type === 'dj') A.dj.ensure();
+      if (!auto && !mix && A.mixer && A.mixer.quickMix()) return; // DJ set: Skip mixes out on the next bar instead of a hard cut
       if (auto && this.repeat === 'one' && this.current) return this._load(this.current, { replay: true });
       let id = null;
       if (this.userQueue.length) id = this.userQueue.shift();
@@ -90,7 +91,7 @@
       }
       if (id == null) { E.pause(); this.emit('state'); return; }
       this.emit('queue');
-      this._load(L.byId.get(id), auto && E.crossfade > 0 ? { cross: E.crossfade } : {});
+      this._load(L.byId.get(id), mix ? { mix } : auto && E.crossfade > 0 ? { cross: E.crossfade } : {});
     }
     prev() {
       if (!this.isLoaded()) { this.seekTo(0); return; }
@@ -140,7 +141,8 @@
       A.speech && A.speech.cancel(); // never carry a DJ intro into the next song
       this.busy = true;
       try {
-        if (o.cross && E.playing && !o.replay) await E.crossTo(track, L.urlFor(track), o.cross);
+        if (o.mix && E.playing) await E.mixTo(track, L.urlFor(track), o.mix);
+        else if (o.cross && E.playing && !o.replay) await E.crossTo(track, L.urlFor(track), o.cross);
         else await E.play(track, L.urlFor(track), o.startAt || 0);
         this.resume = null; this.errStreak = 0;
       } catch (e) {
@@ -163,19 +165,30 @@
       if (!this.counted && cur > Math.min(30, dur * 0.5)) {
         this.counted = true; t.plays = (t.plays || 0) + 1; t.last = Date.now(); L.touch(t);
         this.hist.push([t.id, Date.now()]); if (this.hist.length > 2500) this.hist.splice(0, this.hist.length - 2500);
-        A.store.set('history', this.hist); this.emit('counted');
+        A.store.set('history', this.hist); if (A.safety) A.safety.mirror('history', this.hist); this.emit('counted');
       }
       if (dur > 0 && !E.xfading && !this.busy) {
-        if (rem < 14 && !this.preQueued) {
+        if (rem < 14 && !this.preQueued && !(A.mixer && A.mixer.owns())) {
           const nid = this.peekNext(); const nt = nid && L.byId.get(nid);
           if (nt && nid !== t.id) { this.preQueued = nid; E.preload(nt, L.urlFor(nt)); }
         }
         const xf = E.crossfade;
-        if (xf > 0 && rem <= xf + 0.15 && dur > xf * 2 && this.repeat !== 'one' && this.peekNext()) this.next(true);
+        if (A.mixer && A.mixer.owns()) { /* the DJ mixer decides when to move on */ }
+        else if (xf > 0 && rem <= xf + 0.15 && dur > xf * 2 && this.repeat !== 'one' && this.peekNext()) this.next(true);
       }
+      if (this.loop && this.loop.id === t.id && this.loop.b > this.loop.a && cur >= this.loop.b) E.seek(this.loop.a);
       if (this.sleepEnd && dur > 0 && rem < 0.5) { this.sleepEnd = false; E.fadeOutAndPause(0.3); this.setSleep(null); A.toast('Sleep timer: goodnight'); }
       this.emit('time');
     }
+
+    // ----- A-B loop (practice a section) -----
+    setLoopPoint(which) {
+      const t = this.current; if (!t || !this.isLoaded()) return null;
+      if (!this.loop || this.loop.id !== t.id) this.loop = { id: t.id, a: 0, b: 0 };
+      this.loop[which] = E.time; if (which === 'a' && this.loop.b <= this.loop.a) this.loop.b = 0;
+      this.emit('loop'); return this.loop;
+    }
+    clearLoop() { this.loop = null; this.emit('loop'); }
 
     // ----- sleep timer -----
     setSleep(mins) {

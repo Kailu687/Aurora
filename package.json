@@ -58,7 +58,8 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Aurora"
+      "shortcutName": "Aurora",
+      "deleteAppDataOnUninstall": false
     }
   }
 }

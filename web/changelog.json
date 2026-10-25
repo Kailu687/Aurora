@@ -1,0 +1,30 @@
+[
+  {
+    "version": "1.6.2",
+    "date": "2026-10-19",
+    "notes": [
+      "Artists are now split properly: 'A.R. Rahman;Aaryan' lists under A.R. Rahman and Aaryan instead of making a separate artist",
+      "Download button for the Android app now comes straight from the website"
+    ]
+  },
+  {
+    "version": "1.6.1",
+    "date": "2026-10-19",
+    "notes": [
+      "Update checks use your own domain with an automatic fallback",
+      "The website pages (home and downloads) are now published"
+    ]
+  },
+  {
+    "version": "1.6.0",
+    "date": "2026-10-19",
+    "notes": [
+      "Plays straight from your music folder on Android and Windows: nothing is copied or imported, and songs appear instantly",
+      "Android: notification-bar, lock-screen and Samsung media-panel player with cover art, plus background playback",
+      "Album covers from the song files, from a cover.jpg in the folder, or found online once and saved on the device",
+      "AI DJ with 12 vibes, spoken intros, live requests and nudges, and an on/off switch in Settings",
+      "Closing Aurora from the Android app switcher fully stops the music and the app",
+      "Resume where you left off, Reset to defaults, and over-the-air updates that ask before installing"
+    ]
+  }
+]

@@ -2,7 +2,8 @@
   "version": "1.6.2",
   "android": {
     "size": 3595122,
-    "sha256": "45e222012dc9ed99cd947fafe56ab5fc21109d56480cdc5d440c96fc7359eaab"
+    "sha256": "45e222012dc9ed99cd947fafe56ab5fc21109d56480cdc5d440c96fc7359eaab",
+    "build": 19
   },
   "windows": {
     "size": 91228242,

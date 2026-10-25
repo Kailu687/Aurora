@@ -264,30 +264,6 @@
     if (files.length) runImport((p) => L.addFiles(files, p));
   }
 
-  // ---------- backup ----------
-  const sig = (t) => A.norm(t.artist) + '|' + A.norm(t.title) + '|' + Math.round(t.duration);
-  function exportData() {
-    const data = {
-      app: 'aurora', v: 1, at: Date.now(),
-      playlists: L.playlists.map((p) => ({ name: p.name, tracks: L.get(p.tracks).map(sig) })),
-      tracks: L.tracks.filter((t) => t.liked || t.plays).map((t) => ({ s: sig(t), liked: t.liked, plays: t.plays, last: t.last })),
-      history: P.hist.map(([id, at]) => [L.byId.has(id) ? sig(L.byId.get(id)) : '', at]).filter((h) => h[0]),
-      settings: Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('aurora:') && !/history|playlists|aiKey/.test(k)).map((k) => [k, localStorage.getItem(k)]))
-    };
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })); a.download = 'aurora-backup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  }
-  async function importData(file) {
-    try {
-      const d = JSON.parse(await file.text()); if (d.app !== 'aurora') throw new Error('Not an Aurora backup');
-      const map = new Map(L.tracks.map((t) => [sig(t), t]));
-      d.tracks.forEach((x) => { const t = map.get(x.s); if (t) { t.liked = x.liked || t.liked; t.plays = Math.max(t.plays, x.plays || 0); t.last = Math.max(t.last, x.last || 0); L.touch(t); } });
-      d.playlists.forEach((p) => { const ids = p.tracks.map((s) => map.get(s)).filter(Boolean).map((t) => t.id); L.newPlaylist(p.name, ids); });
-      const hist = (d.history || []).map(([s, at]) => [map.get(s) && map.get(s).id, at]).filter((h) => h[0]); P.hist = [...P.hist, ...hist].sort((a, b) => a[1] - b[1]); A.store.set('history', P.hist);
-      Object.entries(d.settings || {}).forEach(([k, v]) => { try { localStorage.setItem(k, v); } catch { /* */ } });
-      L.changed(); A.toast('Backup restored'); setTimeout(() => location.reload(), 900);
-    } catch (e) { A.toast('Import failed: ' + e.message); }
-  }
-
   // ---------- sound popover ----------
   function soundModal() {
     U.modal({
@@ -295,16 +271,20 @@
       <div class="sound-row"><span>Speed</span><div class="actions" style="padding:0">${[0.75, 1, 1.25, 1.5, 2].map((s) => `<button class="chip sp${s === E.rate ? ' on' : ''}" data-sp="${s}">${s}x</button>`).join('')}</div></div>
       <div class="sound-row"><span>Crossfade</span><input class="range" type="range" min="0" max="12" value="${E.crossfade}" id="m-cf"><b id="m-cfv">${E.crossfade ? E.crossfade + 's' : 'Off'}</b></div>
       <div class="sound-row"><span>Sleep</span><div class="actions" style="padding:0">${[['Off', 0], ['15m', 15], ['30m', 30], ['60m', 60], ['End of song', 'end']].map(([l, v]) => `<button class="chip sl" data-sl="${v}">${l}</button>`).join('')}</div></div>
+      <div class="sound-row"><span>Loop</span><div class="actions" style="padding:0"><button class="chip lp" data-lp="a">Set A</button><button class="chip lp" data-lp="b">Set B</button><button class="chip lp" data-lp="clear">Off</button><b id="m-lpv" class="muted" style="font-weight:500;font-size:13px"></b></div></div>
       <div class="sound-row"><span>EQ preset</span><div class="actions" style="padding:0">${Object.keys(A.EQ_PRESETS).map((n) => `<button class="chip eqp" data-eqp="${esc(n)}">${esc(n)}</button>`).join('')}</div></div>
       <p class="faint" style="font-size:13px">Fine-tune the 10-band equalizer in <a href="#/settings" style="text-decoration:underline" id="m-set">Settings</a>.</p>`,
       buttons: [{ label: 'Done', cls: 'accent', value: null }],
       onOpen: (bg, done) => {
         $('#m-cf', bg).oninput = (e) => { E.setCrossfade(+e.target.value); $('#m-cfv', bg).textContent = +e.target.value ? e.target.value + 's' : 'Off'; };
         $('#m-set', bg).onclick = () => done(null);
+        const lpv = () => { const l = P.loop && P.current && P.loop.id === P.current.id ? P.loop : null; $('#m-lpv', bg).textContent = !l ? 'Practice a part of the song' : l.b > l.a ? `${fmt(l.a)} to ${fmt(l.b)}, repeating` : `From ${fmt(l.a)}, now set B`; };
+        lpv();
         bg.addEventListener('click', (e) => {
           const sp = e.target.closest('.sp'), sl = e.target.closest('.sl'), ep = e.target.closest('.eqp');
           if (sp) { E.setRate(+sp.dataset.sp); $$('.sp', bg).forEach((b) => b.classList.toggle('on', b === sp)); }
           if (sl) { const v = sl.dataset.sl; P.setSleep(v === 'end' ? 'end' : +v || null); A.toast(+v || v === 'end' ? 'Sleep timer on' : 'Sleep timer off'); $$('.sl', bg).forEach((b) => b.classList.toggle('on', b === sl)); }
+          const lp = e.target.closest('.lp'); if (lp) { if (!P.isLoaded()) { A.toast('Play the song first'); return; } if (lp.dataset.lp === 'clear') P.clearLoop(); else P.setLoopPoint(lp.dataset.lp); lpv(); }
           if (ep) { E.setEQAll(A.EQ_PRESETS[ep.dataset.eqp]); A.toast('EQ: ' + ep.dataset.eqp); $$('.eqp', bg).forEach((b) => b.classList.toggle('on', b === ep)); }
         });
       }
@@ -334,6 +314,7 @@
       const p = L.playlists.find((x) => x.id === el.dataset.id); if (!p) return;
       U.menu(e.clientX, e.clientY, [
         { label: 'Rename', icon: 'edit', onClick: async () => { const n = await U.prompt('Rename playlist', p.name); if (n) { p.name = n; L.savePlaylists(); L.changed(); } } },
+        ...(p.rules ? [{ label: 'Edit rules', icon: 'sliders', onClick: () => A.feat.smartEditor(p) }, { label: 'Save as a normal playlist', icon: 'list', onClick: () => { const np = L.newPlaylist(p.name + ' (copy)', p.tracks); location.hash = '#/playlist/' + np.id; } }] : []),
         { label: 'Add all to queue', icon: 'queue', onClick: () => { P.addToQueue(p.tracks); A.toast('Added to queue'); } },
         { label: 'Delete playlist', icon: 'trash', danger: true, onClick: async () => { if (await U.confirm('Delete playlist?', `"${p.name}" will be deleted. Songs stay in your library.`, 'Delete', true)) { L.deletePlaylist(p); location.hash = '#/library'; } } }]);
     },
@@ -369,7 +350,19 @@
     'set-accent': (el) => { A.store.set('accent', el.dataset.id); U.applyAccent(U._lastColor); A.render(true); },
     'test-voice': () => A.dj.say('Hey, it’s your DJ. Testing, one, two. How do I sound?', { duck: false }),
     reanalyze: () => { A.analysis.reset(); A.toast('Re-analyzing your library'); A.render(true); },
-    export: exportData, import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json'; i.onchange = () => i.files[0] && importData(i.files[0]); i.click(); },
+    export: () => A.safety.exportFile(), import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json'; i.onchange = () => i.files[0] && A.safety.importFile(i.files[0]); i.click(); },
+    'snapshot-now': async () => { await A.safety.snapshot('Made by you'); A.toast('Backed up on this device'); A.render(true); },
+    'restore-snap': async (el) => {
+      const d = await A.safety.get(+el.dataset.id); if (!d) return A.toast('That backup is gone');
+      if (!(await U.confirm('Restore this backup?', `From ${new Date(d.at).toLocaleString()}. Likes, play counts, playlists and history from it are added back. Nothing you have now is deleted.`, 'Restore'))) return;
+      await A.safety.snapshot('Before restore'); await A.safety.restore(d); A.toast('Backup restored'); setTimeout(() => location.reload(), 900);
+    },
+    'whats-new': () => A.updater.whatsNew({ force: true }),
+    'update-mode': (el) => { A.store.set('updateMode', el.dataset.id); A.render(true); },
+    recap: (el) => A.feat.recap(el.dataset.id),
+    'smart-new': () => A.feat.smartEditor(), 'smart-edit': (el) => { const p = L.playlists.find((x) => x.id === el.dataset.id); if (p) A.feat.smartEditor(p); },
+    'dj-journey': (el) => A.dj.setJourney(el.dataset.id),
+    'dj-journey-pick': (el) => { V().djSel.journey = el.dataset.id; A.store.set('djJourney', el.dataset.id); A.render(true); },
     install: async () => {
       if (A._installEvt) { A._installEvt.prompt(); A._installEvt = null; return; }
       U.modal({ title: 'Install Aurora', html: '<p class="muted">On <b>iPhone / iPad</b>: tap the Share button, then <b>Add to Home Screen</b>.<br><br>On <b>Android</b>: open the browser menu (⋮) and choose <b>Install app</b> / <b>Add to Home screen</b>.<br><br>On <b>desktop Chrome / Edge</b>: click the install icon at the right of the address bar.</p>', buttons: [{ label: 'Got it', cls: 'accent', value: null }] });
@@ -380,7 +373,8 @@
     'nt-perm': () => { if (A.native) { A.native.requestPermission(); setTimeout(() => A.render(true), 1500); } },
     'reset-defaults': async () => {
       if (!(await U.confirm('Reset to defaults?', 'All settings go back to their defaults and the app reloads. Songs, playlists, likes and history are kept.', 'Reset', true))) return;
-      const keep = new Set(['aurora:playlists', 'aurora:history', 'aurora:session']);
+      const keep = new Set(['aurora:playlists', 'aurora:history', 'aurora:session', 'aurora:lastSnapshot', 'aurora:seenVersion']);
+      await A.safety.secretSet('aiKey', '');
       Object.keys(localStorage).filter((k) => k.startsWith('aurora:') && !keep.has(k)).forEach((k) => localStorage.removeItem(k));
       try { if (A.dj.s) A.dj.stop(); } catch { /* */ }
       A.toast('Settings reset'); setTimeout(() => location.reload(), 600);
@@ -389,8 +383,9 @@
     'dj-pick': (el) => { V().djSel.vibe = el.dataset.id; A.render(true); },
     'dj-genre': (el) => { const s = V().djSel.genres, g = el.dataset.id; s.has(g) ? s.delete(g) : s.add(g); A.render(true); },
     'dj-style': (el) => { V().djSel.style = el.dataset.id; A.store.set('djStyle', el.dataset.id); A.render(true); },
+    'dj-mix': (el) => { A.mixer.setMode(el.dataset.id); if (A.route.name === 'dj') A.render(true); },
     'dj-talk': (el) => { V().djSel.talk = el.dataset.id; A.store.set('djTalk', el.dataset.id); A.render(true); },
-    'dj-go': () => { const s = V().djSel; A.store.set('djTalk', s.talk); A.dj.start({ vibe: s.vibe, genres: [...s.genres], style: s.style, talk: s.talk }); },
+    'dj-go': () => { const s = V().djSel; A.store.set('djTalk', s.talk); A.dj.start({ vibe: s.vibe, genres: [...s.genres], style: s.style, talk: s.talk, journey: s.journey }); },
     'dj-surprise': () => { const v = A.pick(A.VIBES).id; V().djSel.vibe = v; A.dj.start({ vibe: v, style: V().djSel.style, talk: V().djSel.talk }); if (A.route.name !== 'dj') location.hash = '#/dj'; },
     'dj-start': (el) => { A.dj.start({ vibe: el.dataset.id, style: V().djSel.style, talk: V().djSel.talk }); if (A.route.name !== 'dj' && !isMobile()) location.hash = '#/dj'; },
     'dj-stop': () => { A.dj.stop(); A.render(true); renderSide(); renderNpPanel(); },
@@ -403,6 +398,7 @@
   function bindGlobal() {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-a]'); 
+      if (el && el.tagName === 'A' && /^javascript:/i.test(el.getAttribute('href') || '')) e.preventDefault();
       if (el) { const f = ACT[el.dataset.a]; if (f) { if (el.closest('a') && el.tagName !== 'A') { e.preventDefault(); } if (el.dataset.a !== 'close-np' || el.tagName !== 'A') e.stopPropagation(); f(el, e); if (el.dataset.a === 'close-np' && el.tagName === 'A') { /* let link navigate */ } return; } }
       const row = e.target.closest('.row[data-tid], .q-item[data-tid]');
       if (row && !e.target.closest('a, button')) {
@@ -463,6 +459,7 @@
 
   // ---------- boot ----------
   async function boot() {
+    if (await A.updater.bootApply()) return; // an update downloaded last time: installed, page reloads
     document.body.classList.toggle('electron', A.isDesktop);
     document.documentElement.style.setProperty('--blur', A.store.get('blur', 26) + 'px');
     document.body.classList.toggle('calm', A.store.get('bgAnim', true) === false);
@@ -471,6 +468,8 @@
     cacheEls(); initIcons(); A.setTheme(A.store.get('theme', 'dark')); U.applyAccent(null);
     updateStateUI(); updateVol(); updateTrackUI(); bindGlobal(); bindDJ();
     try { await L.load(); } catch (e) { console.error(e); A.toast('Storage unavailable — library won’t persist'); }
+    if (A.isDesktop && window.desktop.adoptRoots) await window.desktop.adoptRoots(L.roots.filter((r) => r.path).map((r) => r.path)).catch(() => {});
+    await A.safety.recover(); A.safety.migrateSecrets().catch(() => {});
     // Android: songs used to be copied into the app. Remove those copies now that folders are linked instead.
     if (window.AuroraAndroid && window.AuroraAndroid.scan) {
       const copied = L.tracks.filter((t) => t.kind === 'blob');
@@ -498,6 +497,7 @@
     checkReconnect();
     setTimeout(() => A.analysis.start(), 2500);
     A.updater.load().then(() => A.updater.start());
+    setTimeout(() => { A.updater.bootOk(); A.safety.daily(); A.updater.whatsNew().catch(() => {}); }, 2500);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the OS not to evict the song library
     if ('serviceWorker' in navigator && !A.isDesktop && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); A._installEvt = e; $('#btn-install').hidden = false; });
