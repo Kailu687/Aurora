@@ -72,19 +72,12 @@
         d.lp = ctx.createBiquadFilter(); d.lp.type = 'lowpass'; d.lp.frequency.value = 20000; d.lp.Q.value = 0.9;
         d.node.connect(d.hp); d.hp.connect(d.lp); d.lp.connect(d.bass); d.bass.connect(d.gain);
         // effect sends, taken before the deck's fader so an echo or reverb tail keeps ringing after the song is cut
+        // (they are only wired up while a mix uses them, see _fxOn)
         d.esend = ctx.createGain(); d.esend.gain.value = 0; d.rsend = ctx.createGain(); d.rsend.gain.value = 0;
-        d.bass.connect(d.esend); d.bass.connect(d.rsend);
       });
       let prev = null;
       this.eq.forEach((b) => { if (prev) prev.connect(b); prev = b; });
       this.decks.forEach((d) => d.gain.connect(this.eq[0]));
-      // DJ effects: a tempo-synced echo, a reverb for washing a song out, and a noise riser for build-ups
-      this.echo = ctx.createDelay(4); this.echo.delayTime.value = 0.5; this.efb = ctx.createGain(); this.efb.gain.value = 0.55;
-      this.etone = ctx.createBiquadFilter(); this.etone.type = 'lowpass'; this.etone.frequency.value = 3200;
-      this.decks.forEach((d) => d.esend.connect(this.echo));
-      this.echo.connect(this.etone); this.etone.connect(this.efb); this.efb.connect(this.echo); this.etone.connect(this.eq[0]);
-      this.verb = ctx.createConvolver(); this.verb.buffer = this._impulse(3.2); this.decks.forEach((d) => d.rsend.connect(this.verb));
-      this.verbOut = ctx.createGain(); this.verbOut.gain.value = 0.9; this.verb.connect(this.verbOut); this.verbOut.connect(this.eq[0]);
       prev.connect(this.duck); this.duck.connect(this.master); this.master.connect(this.analyser); this.analyser.connect(ctx.destination);
       this.applyVolume();
       this._tick = setInterval(() => this.emit('tick'), 250);
@@ -184,6 +177,31 @@
       this.decks.forEach((d) => {
         [[d.hp.frequency, 10], [d.lp.frequency, 20000], [d.bass.gain, 0], [d.esend.gain, 0], [d.rsend.gain, 0]].forEach(([p, v]) => { p.cancelScheduledValues(t); p.setValueAtTime(v, t); });
       });
+      this._fxIdle();
+    }
+    // DJ effects (a tempo-synced echo and a reverb) are built the first time a mix needs them and unplugged again
+    // a few seconds after it ends: an idle reverb and echo loop still cost CPU every audio frame, which phones feel.
+    _fxOn() {
+      if (this.direct || !this.ctx) return; clearTimeout(this._fxT); if (this._fxLive) return; const ctx = this.ctx;
+      if (!this.echo) {
+        this.echo = ctx.createDelay(4); this.echo.delayTime.value = 0.5; this.efb = ctx.createGain(); this.efb.gain.value = 0.55;
+        this.etone = ctx.createBiquadFilter(); this.etone.type = 'lowpass'; this.etone.frequency.value = 3200;
+        this.echo.connect(this.etone); this.etone.connect(this.eq[0]);
+        this.verb = ctx.createConvolver(); this.verb.buffer = this._impulse(3.2);
+        this.verbOut = ctx.createGain(); this.verbOut.gain.value = 0.9; this.verb.connect(this.verbOut); this.verbOut.connect(this.eq[0]);
+        this.decks.forEach((d) => { d.esend.connect(this.echo); d.rsend.connect(this.verb); });
+      }
+      this.etone.connect(this.efb); this.efb.connect(this.echo);
+      this.decks.forEach((d) => { d.bass.connect(d.esend); d.bass.connect(d.rsend); });
+      this._fxLive = true;
+    }
+    _fxIdle(ms = 9000) {
+      clearTimeout(this._fxT); if (!this._fxLive) return;
+      this._fxT = setTimeout(() => {
+        if (this.mixing) return this._fxIdle(ms);
+        try { this.decks.forEach((d) => { d.bass.disconnect(d.esend); d.bass.disconnect(d.rsend); }); this.etone.disconnect(this.efb); this.efb.disconnect(this.echo); } catch { /* */ }
+        this._fxLive = false;
+      }, ms);
     }
     _impulse(secs) {
       const sr = this.ctx.sampleRate, n = Math.floor(sr * secs), b = this.ctx.createBuffer(2, n, sr);
@@ -205,6 +223,7 @@
       if (this.direct || !this.ctx) return;
       const t = this.ctx.currentTime;
       if (kind === 'echo') {
+        this._fxOn();
         this.echo.delayTime.setValueAtTime(A.clamp(beat * 0.75, 0.12, 1.5), t); this.efb.gain.setValueAtTime(0.58, t);
         d.esend.gain.cancelScheduledValues(t); d.esend.gain.setValueAtTime(0.0001, t); d.esend.gain.linearRampToValueAtTime(0.9, t + Math.max(0.05, secs * 0.6));
       } else if (kind === 'riser') {
@@ -248,6 +267,7 @@
         }, 40);
         return;
       }
+      if (hard || style === 'wash') this._fxOn();
       const t = this.ctx.currentTime, half = t + blend / 2, end = t + blend, g = (d) => d.gain.gain;
       [to, from].forEach((d) => { g(d).cancelScheduledValues(t); d.hp.frequency.cancelScheduledValues(t); d.bass.gain.cancelScheduledValues(t); });
       [to.lp.frequency, to.esend.gain, to.rsend.gain].forEach((p) => p.cancelScheduledValues(t));
@@ -290,7 +310,7 @@
       this._xt = setTimeout(() => {
         from.el.pause(); clearInterval(this._bi); from.el.playbackRate = this.rate; from.el.preservesPitch = true; from.gain.gain.value = 0;
         [[from.hp.frequency, 10], [from.lp.frequency, 20000], [from.bass.gain, 0], [from.esend.gain, 0], [from.rsend.gain, 0]].forEach(([p, v]) => { p.cancelScheduledValues(0); p.value = v; });
-        this.xfading = false; this.mixing = null;
+        this.xfading = false; this.mixing = null; this._fxIdle();
       }, blend * 1000 + 120);
     }
     setDeckRate(d, r) { d.el.playbackRate = r; d.el.preservesPitch = true; }

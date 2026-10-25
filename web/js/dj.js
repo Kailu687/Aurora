@@ -365,7 +365,11 @@
     // rather than muted, and short enough to finish before the hook lands.
     _unduck() { if (E.ctx || E.direct) E.setDuck(1, 0.5); dj.emit('talk', false); },
     _speed() { const s = dj.s; return ((s && A.DJ_STYLES[s.style].speed) || 1) * (MOOD_SPEED[A.djMood(s && s.vibe)] || 1); },
-    studio() { return !!(A.voice && A.voice.wanted() && A.voice.ready()); },
+    studio() {
+      const V = A.voice; if (!V || !V.wanted()) return false;
+      if (!V.ready() && V.state !== 'loading' && V.state !== 'error') V.load(); // started on first use, not at app start
+      return V.ready();
+    },
     _render(text) { // a studio-voice clip for this line, or null (then the system voice reads it live)
       if (!text || A.store.get('djVoiceOn', true) === false || !dj.studio()) return Promise.resolve(null);
       return A.voice.synth(text, { style: (dj.s && dj.s.style) || 'smooth', speed: dj._speed() }).catch(() => null);

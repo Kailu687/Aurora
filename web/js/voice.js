@@ -18,7 +18,7 @@
   V.emit = () => V.listeners.forEach((f) => { try { f(V); } catch { /* */ } });
   V.supported = () => typeof WebAssembly === 'object' && 'caches' in window && !!(window.crypto && crypto.subtle);
   V.wanted = () => A.store.get('studioVoice', false) === true;
-  V.ready = () => V.state === 'ready' && !!V.tts;
+  V.ready = () => V.state === 'ready' && !!V.worker;
   V.voiceFor = (style) => { const v = A.store.get('studioVoiceName', ''); return A.STUDIO_VOICES[v] ? v : PERSONA[style] || 'af_heart'; };
   const set = (state, extra = {}) => { Object.assign(V, { state }, extra); V.emit(); };
 
@@ -47,35 +47,45 @@
     return URL.createObjectURL(new Blob([buf], { type: 'application/wasm' }));
   }
 
-  // Download (first time) and start the voice. Safe to call repeatedly.
+  // Download (first time) and start the voice in a background worker. Safe to call repeatedly.
+  // The voice is heavy, so it only starts when the DJ is actually about to talk, never at app start.
+  const jobs = new Map(); let seq = 0;
   V.load = function () {
     if (V._loading) return V._loading;
-    if (!V.supported()) { set('error', { error: 'This device can’t run the studio voice.' }); return Promise.resolve(null); }
+    if (!V.supported() || typeof Worker === 'undefined') { set('error', { error: 'This device can’t run the studio voice.' }); return Promise.resolve(null); }
     set('loading', { progress: 0, error: '' });
     V._loading = (async () => {
-      const mod = await import(new URL('vendor/kokoro/kokoro.web.js', document.baseURI).href);
-      mod.env.wasmPaths = { mjs: new URL('vendor/kokoro/ort-wasm-simd-threaded.jsep.mjs', document.baseURI).href, wasm: await wasmURL() };
-      const files = new Map();
-      const tts = await mod.KokoroTTS.from_pretrained(MODEL, {
-        dtype: 'q8', device: 'wasm',
-        progress_callback: (p) => {
-          if (p.status === 'progress' && p.total) { files.set(p.file, [p.loaded, p.total]); let l = 0, t = 0; files.forEach(([a, b]) => { l += a; t += b; }); V.progress = t ? l / t : 0; V.emit(); }
-        }
-      });
-      V.tts = tts; A.store.set('studioVoiceReady', true); set('ready', { progress: 1 });
-      return tts;
-    })().catch((e) => { A.log('studio voice failed: ' + (e && e.message)); V._loading = null; set('error', { error: /fetch|network|load/i.test((e && e.message) || '') ? 'Couldn’t download the voice. Check your internet connection and try again.' : 'The studio voice couldn’t start on this device.' }); return null; });
+      const paths = { mjs: new URL('vendor/kokoro/ort-wasm-simd-threaded.jsep.mjs', document.baseURI).href, wasm: await wasmURL() };
+      const w = new Worker(new URL('js/voice-worker.js', document.baseURI).href, { type: 'module' }), files = new Map();
+      await new Promise((ok, no) => {
+        w.onerror = (e) => no(new Error((e && e.message) || 'voice worker failed to start'));
+        w.onmessage = (e) => {
+          const m = e.data;
+          if (m.type === 'progress') { files.set(m.file, [m.loaded, m.total]); let l = 0, t = 0; files.forEach(([a, b]) => { l += a; t += b; }); V.progress = t ? l / t : 0; V.emit(); }
+          else if (m.type === 'ready') ok();
+          else if (m.type === 'error' && m.stage === 'load') no(new Error(m.message));
+          else if (m.type === 'audio' || m.type === 'error') { const j = jobs.get(m.id); if (j) { jobs.delete(m.id); m.type === 'audio' ? j.ok(m) : j.no(new Error(m.message)); } }
+        };
+        w.postMessage({ type: 'load', paths, model: MODEL });
+      }).catch((e) => { w.terminate(); throw e; });
+      w.onerror = () => { jobs.forEach((j) => j.no(new Error('voice stopped'))); jobs.clear(); V.worker = null; V._loading = null; set('off'); };
+      V.worker = w; A.store.set('studioVoiceReady', true); set('ready', { progress: 1 });
+      return w;
+    })().catch((e) => { A.log('studio voice failed: ' + (e && e.message)); V._loading = null; set('error', { error: /fetch|network|download/i.test((e && e.message) || '') ? 'Couldn’t download the voice. Check your internet connection and try again.' : 'The studio voice couldn’t start on this device.' }); return null; });
     return V._loading;
   };
-  V.enable = (on) => { A.store.set('studioVoice', !!on); if (on) V.load(); else V.emit(); };
+  V.enable = (on) => {
+    A.store.set('studioVoice', !!on);
+    if (on) V.load(); else { if (V.worker) V.worker.terminate(); V.worker = null; V._loading = null; set('off'); } // turning it off frees its memory
+  };
 
   // Turn text into a WAV clip. Lines are rendered one after another so two DJ lines never fight for the CPU.
   let chain = Promise.resolve();
   V.synth = function (text, { style = 'smooth', speed = 1 } = {}) {
     const job = chain.then(async () => {
-      const tts = V.tts || (await V.load()); if (!tts) return null;
-      const out = await tts.generate(text, { voice: V.voiceFor(style), speed: A.clamp(speed, 0.7, 1.3) });
-      const pcm = out.audio, sr = out.sampling_rate; if (!pcm || !pcm.length) return null;
+      const w = V.worker || (await V.load()); if (!w) return null;
+      const id = ++seq, out = await new Promise((ok, no) => { jobs.set(id, { ok, no }); w.postMessage({ type: 'gen', id, text, voice: V.voiceFor(style), speed: A.clamp(speed, 0.7, 1.3) }); });
+      const pcm = out.pcm, sr = out.sr; if (!pcm || !pcm.length) return null;
       return { blob: wav(trim(pcm, sr), sr), secs: pcm.length / sr };
     });
     chain = job.catch(() => {});
@@ -130,6 +140,4 @@
     bind(); V.listeners.add(draw);
   };
 
-  // pick up where we left off: if the voice was set up before, start it quietly in the background
-  if (V.wanted() && V.supported()) setTimeout(() => { if (A.djEnabled && A.djEnabled()) V.load(); }, 4000);
 })(window.A);

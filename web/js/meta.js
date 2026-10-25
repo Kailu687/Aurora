@@ -282,10 +282,35 @@
       const start = Math.floor(src.size * 0.3);
       ab = await src.slice(start, start + 1.2e6);
     } else ab = await src.slice(0, src.size);
+    const oc = new OfflineAudioContext(1, 22050, 22050);
+    const data = (await oc.decodeAudioData(ab)).getChannelData(0);
+    return work(data, src.size);
+  };
+
+  // The number crunching runs in a background worker so the app never stutters while songs are analysed.
+  // If the worker can't start (old webview, odd protocol) it runs here instead, between short pauses.
+  let wk = null, wkDead = false, wkSeq = 0; const wkWait = new Map();
+  function worker() {
+    if (wk || wkDead || typeof Worker === 'undefined' || typeof document === 'undefined') return wk;
+    try {
+      wk = new Worker('js/analysis-worker.js');
+      wk.onmessage = (e) => { const w = wkWait.get(e.data.id); if (w) { wkWait.delete(e.data.id); e.data.err ? w.no(new Error(e.data.err)) : w.ok(e.data.r); } };
+      wk.onerror = () => { wkDead = true; wk = null; wkWait.forEach((w) => w.fallback()); wkWait.clear(); };
+    } catch { wkDead = true; wk = null; }
+    return wk;
+  }
+  function work(data, size) {
+    const w = worker();
+    if (!w) return A.vibe(data, size);
+    return new Promise((ok, no) => {
+      const id = ++wkSeq, copy = data.slice(); // the decoded buffer can't be handed over, a copy can
+      wkWait.set(id, { ok, no, fallback: () => { try { ok(A.vibe(data, size)); } catch (e) { no(e); } } });
+      w.postMessage({ id, data: copy, size }, [copy.buffer]);
+    });
+  }
+
+  A.vibe = function (data, size) {
     const SRATE = 22050;
-    const oc = new OfflineAudioContext(1, SRATE, SRATE);
-    const buf = await oc.decodeAudioData(ab);
-    const data = buf.getChannelData(0);
     const n = Math.min(data.length, SRATE * 50);
     const from = data.length > n ? Math.floor((data.length - n) * 0.35) : 0;
     const seg = data.subarray(from, from + n);
@@ -326,7 +351,7 @@
     const onsetN = A.clamp((mean / (rms || 1)) * 5, 0, 1);
     const energy = A.clamp(0.5 * loud + 0.22 * tempoN + 0.16 * onsetN + 0.12 * bright, 0, 1);
     let mix = null;
-    if (src.size <= 14e6) { try { mix = A.mixAnalysis(data, SRATE); } catch (e) { A.log('beat grid failed: ' + e.message); } }
+    if (size <= 14e6) { try { mix = A.mixAnalysis(data, SRATE); } catch (e) { A.log('beat grid failed: ' + e.message); } }
     if (mix) tempo = Math.round(mix.bpm);
     // mood: major keys, brightness, a quicker pulse and a song that sits on its beat all read as happier/lighter
     const dance = mix ? +A.clamp(0.65 * mix.dance + 0.35 * (1 - Math.min(1, Math.abs(tempo - 118) / 45)), 0, 1).toFixed(3) : +pulse.toFixed(3);
@@ -366,6 +391,13 @@
     for (let k = 0; k < W / 2; k++) { const f = (k * SR) / W; pc[k] = f < 80 || f > 4200 ? -1 : (Math.round(69 + 12 * Math.log2(f / 440)) % 12 + 12) % 12; vox[k] = f >= 300 && f <= 3400 ? 1 : 0; }
     const ch = new Float32Array(n * 12), vr = new Float32Array(n), t0 = new Float32Array(n), mel = new Float32Array(n), sal = new Float32Array(n), en = new Float32Array(n);
     const mag = new Float32Array(W / 2), wh = new Float32Array(W / 2), sc = new Float32Array(79), bw = SR / W, KW = Math.max(2, Math.round(120 / bw));
+    // harmonic positions and weights per candidate note, worked out once instead of for every frame
+    const HI = [], HT = [], HW = [], HN = new Uint8Array(sc.length);
+    for (let j = 0; j < sc.length; j++) {
+      const f0 = 440 * Math.pow(2, (45 + j * 0.5 - 69) / 12);
+      for (let h = 1; h <= 10 && h * f0 < 5000; h++) { const x = (h * f0) / bw, i = Math.floor(x); HI.push(i); HT.push(x - i); HW.push(Math.pow(0.86, h - 1)); HN[j]++; }
+    }
+    const hI = Int32Array.from(HI), hT = Float32Array.from(HT), hW = Float32Array.from(HW), WL = W / 2 - 1;
     for (let f = 0; f < n; f++) {
       const o = f * H; for (let i = 0; i < W; i++) { re[i] = data[o + i] * win[i]; im[i] = 0; }
       fft(re, im); let tot = 1e-9, v = 0;
@@ -379,9 +411,9 @@
       // (voices often have a weak fundamental, so all of the first 10 harmonics count; a candidate an octave too low
       // only collects every other harmonic, and one an octave too high misses half of them)
       let bs = 0, bm = 0; const S = sc; S.fill(0);
-      for (let j = 0; j < S.length; j++) {
-        const f0 = 440 * Math.pow(2, (45 + j * 0.5 - 69) / 12); let s = 0, hit = 0;
-        for (let h = 1; h <= 10 && h * f0 < 5000; h++) { const v = Math.max(0, at(h * f0) - 1); s += Math.pow(0.86, h - 1) * v; if (v > 0.5) hit++; }
+      for (let j = 0, q = 0; j < S.length; j++) {
+        let s = 0, hit = 0;
+        for (let e = q + HN[j]; q < e; q++) { const i = hI[q]; if (i >= WL) continue; const t = hT[q], v = wh[i] * (1 - t) + wh[i + 1] * t - 1; if (v > 0) { s += hW[q] * v; if (v > 0.5) hit++; } }
         S[j] = s * (0.6 + 0.4 * Math.min(1, hit / 5));
       }
       let bj = -1; for (let j = 0; j < S.length; j++) if (S[j] > bs) { bs = S[j]; bj = j; }

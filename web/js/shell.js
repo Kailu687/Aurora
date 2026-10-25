@@ -80,16 +80,21 @@
     inp.addEventListener('change', () => { seeking = false; P.seekTo((inp.value / 1000) * dur()); });
     window.addEventListener('pointerup', () => setTimeout(() => (seeking = false), 50));
   }
+  let lastKey = '';
   function frame() {
     requestAnimationFrame(frame);
     if (document.hidden) return;
     const loaded = P.isLoaded();
     const d = loaded ? E.duration : (P.current ? P.current.duration : 0), t = loaded ? E.time : (P.resume ? P.resume.pos : 0);
     if (!seeking) {
-      const pct = d ? (t / d) * 100 : 0;
-      ['pb', 'np'].forEach((p) => { els[p + '-seek'].value = pct * 10; U.setRange(els[p + '-seek'], pct); els[p + '-cur'].textContent = fmt(t); els[p + '-dur'].textContent = fmt(d); });
-      els['mini-fill'].style.width = pct + '%';
-    }
+      // only touch the page when something visible changed (a new second or a step of the bar), not 60 times a second
+      const pct = d ? (t / d) * 100 : 0, key = Math.round(pct * 10) + '|' + Math.floor(t) + '|' + Math.floor(d);
+      if (key !== lastKey) {
+        lastKey = key;
+        ['pb', 'np'].forEach((p) => { els[p + '-seek'].value = pct * 10; U.setRange(els[p + '-seek'], pct); els[p + '-cur'].textContent = fmt(t); els[p + '-dur'].textContent = fmt(d); });
+        els['mini-fill'].style.width = pct + '%';
+      }
+    } else lastKey = '';
     if (document.body.classList.contains('np-open')) drawViz();
     syncLyrics(t);
   }
