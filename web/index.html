@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob: https:; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aurora</title>
 <meta name="description" content="Aurora - a glassmorphic local music player with an AI DJ.">
@@ -25,6 +26,7 @@
       <a href="#/search" data-nav="search"></a>
       <a href="#/library" data-nav="library"></a>
       <a href="#/dj" data-nav="dj" class="djlink"></a>
+      <a href="#/flow" data-nav="flow"></a>
       <a href="#/stats" data-nav="stats"></a>
     </nav>
     <div class="side-sec">
@@ -142,15 +144,22 @@
 <script src="js/version.js"></script>
 <script src="js/util.js"></script>
 <script src="js/db.js"></script>
+<script src="js/safety.js"></script>
 <script src="js/meta.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/library.js"></script>
 <script src="js/player.js"></script>
 <script src="js/dj.js"></script>
+<script src="js/mixer.js"></script>
 <script src="js/updater.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/features.js"></script>
 <script src="js/views.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/lyrics.js"></script>
 <script src="js/shell.js"></script>
+<script src="js/immersive.js"></script>
+<script src="js/anywhere.js"></script>
 <script src="js/native.js"></script>
 </body>
 </html>

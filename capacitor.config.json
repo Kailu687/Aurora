@@ -1,1 +1,1 @@
-{ "appId": "app.aurora.player", "appName": "Aurora", "webDir": "web", "android": { "allowMixedContent": false }, "backgroundColor": "#07070c" }
+{"appId": "app.aurora.player", "appName": "Aurora", "webDir": "web", "android": {"allowMixedContent": false}, "backgroundColor": "#07070c", "server": {"androidScheme": "https", "hostname": "localhost"}}

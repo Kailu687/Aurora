@@ -25,3 +25,6 @@ android/keystore.properties
 Thumbs.db
 .idea/
 .vscode/
+
+# Update signing key (keep it in ../Aurora-keys, never in the repo)
+*.pem

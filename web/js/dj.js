@@ -58,7 +58,7 @@
 
   // ---------- background vibe analysis ----------
   const AN = A.analysis = { running: false, paused: false, done: 0, total: 0, enabled: A.store.get('analyze', true), listeners: new Set() };
-  AN.pendingList = () => L.tracks.filter((t) => !t.an && !t.anFail);
+  AN.pendingList = () => L.tracks.filter((t) => !t.anFail && (!t.an || (!(t.an.mix && t.an.mix.v === A.MIX_VERSION) && !t.anMixFail)));
   AN.emit = () => AN.listeners.forEach((f) => f());
   A.djEnabled = () => A.store.get('djEnabled', true) !== false;
   AN.start = async function () {
@@ -73,7 +73,7 @@
         try {
           if (t.kind === 'handle' && (await t.handle.queryPermission({ mode: 'read' })) !== 'granted') { t.anFail = true; continue; }
           const src = await L.sourceFor(t); const r = await A.analyze(src);
-          if (r) t.an = r; else t.anFail = true;
+          if (r) { t.an = r; if (!r.mix) t.anMixFail = true; } else if (t.an) t.anMixFail = true; else t.anFail = true;
         } catch { t.anFail = true; }
         L.touch(t); AN.done = L.tracks.length - AN.pendingList().length; AN.emit();
         await A.sleep(P.current && E.playing ? 450 : 120);
@@ -155,7 +155,7 @@
     return line;
   }
   async function llmLine(t, prev, s, moment) {
-    const key = A.store.get('aiKey', ''); if (!key) return null;
+    const key = await A.safety.secretGet('aiKey'); if (!key) return null;
     const S = A.DJ_STYLES[s.style];
     const prompt = `You are ${S.dj}, a charismatic radio DJ in the style "${S.label}". Current set vibe: ${s.vibe.name} (${s.vibe.tag}). ` +
       `${moment === 'start' ? 'You are opening the set.' : `The song that just ended: "${prev ? prev.title : ''}" by ${prev ? prev.artist : ''}.`} ` +
@@ -174,6 +174,40 @@
     } catch { return null; } finally { clearTimeout(to); }
   }
 
+  // Ask Claude to turn a free-text request into vibe / genre / artist / energy choices from this library
+  async function llmRequest(text) {
+    const key = await A.safety.secretGet('aiKey'); if (!key) return null;
+    const d = L.derive();
+    const genres = d.genres.slice(0, 40).map((g) => g.name), artists = d.artists.slice().sort((a, b) => b.tracks.length - a.tracks.length).slice(0, 80).map((a) => a.name);
+    const prompt = `A listener asked their music player's DJ: "${text}"\n` +
+      `Vibes: ${A.VIBES.map((v) => v.id + ' (' + v.name + ')').join(', ')}.\nGenres in their library: ${genres.join(', ') || 'none tagged'}.\nArtists in their library: ${artists.join(', ')}.\n` +
+      `Reply with JSON only: {"vibe": one vibe id or null, "genres": [genres from the list], "artists": [artists from the list], "energy": number from -1 (much calmer) to 1 (much more energy), "reply": "one short friendly DJ sentence, no emojis"}. Use only names from the lists.`;
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 9000);
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', signal: ctl.signal,
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: A.store.get('aiModel', 'claude-haiku-5-5'), max_tokens: 300, messages: [{ role: 'user', content: prompt }] })
+      });
+      if (!r.ok) return null;
+      const j = await r.json(), txt = (j.content && j.content[0] && j.content[0].text) || '', m = /\{[\s\S]*\}/.exec(txt);
+      return m ? JSON.parse(m[0]) : null;
+    } catch { return null; } finally { clearTimeout(to); }
+  }
+
+  // ---------- journeys: the shape of a set's energy over about an hour ----------
+  const JLEN = 16;
+  A.JOURNEYS = {
+    steady: { name: 'Steady', tag: 'Holds the vibe with gentle waves', f: null },
+    peak: { name: 'Warm up, peak, cool down', tag: 'Builds to a peak around 40 minutes in, then lands softly', f: (p) => (p < 0.6 ? 0.15 + 0.85 * (p / 0.6) : 1 - 0.75 * ((p - 0.6) / 0.4)) },
+    build: { name: 'Build up', tag: 'Starts easy and keeps climbing', f: (p) => 0.1 + 0.9 * p },
+    wind: { name: 'Wind down', tag: 'Eases off song by song, then stops', f: (p) => 1 - 0.95 * p }
+  };
+  A.journeyCurve = (id, vibe) => { // [ [p, energy], ... ] for drawing
+    const J = A.JOURNEYS[id] || A.JOURNEYS.steady, [a, b] = vibe.e, lo = Math.max(0, a - 0.12), hi = Math.min(1, b + 0.12), mid = (a + b) / 2;
+    return Array.from({ length: 33 }, (_, i) => { const p = i / 32; return [p, J.f ? lo + J.f(p) * (hi - lo) : mid + 0.09 * Math.sin(((p * JLEN) / 9) * Math.PI * 2 - Math.PI / 2)]; });
+  };
+
   // ---------- DJ session ----------
   const dj = A.dj = {
     s: null,
@@ -181,13 +215,14 @@
     emit(n, d) { dj.listeners.forEach((f) => f(n, d)); },
     get active() { return !!dj.s && P.context.type === 'dj'; },
 
-    start({ vibe, genres = [], style, voice, talk, request } = {}) {
+    start({ vibe, genres = [], style, voice, talk, request, journey } = {}) {
       if (!A.djEnabled()) { A.toast('AI DJ is turned off in Settings'); return false; }
       vibe = typeof vibe === 'string' ? A.vibeById(vibe) : vibe;
       if (!vibe) vibe = A.vibeById(A.vibeOfDay());
       if (L.tracks.length < 3) { A.toast('Add some music first so the DJ has records to spin'); return false; }
-      A.store.set('djLast', { vibe: vibe.id, genres, style });
-      dj.s = { vibe, genres: new Set(genres.map(nrm)), style: style || A.store.get('djStyle', 'smooth'), talk: talk || A.store.get('djTalk', 'always'), bias: 0, played: new Set(), recentArtists: [], n: 0, started: Date.now(), focus: null, artistFocus: null, dead: false };
+      journey = A.JOURNEYS[journey] ? journey : A.store.get('djJourney', 'steady');
+      A.store.set('djLast', { vibe: vibe.id, genres, style }); A.store.set('djJourney', journey);
+      dj.s = { vibe, journey, genres: new Set(genres.map(nrm)), style: style || A.store.get('djStyle', 'smooth'), talk: talk || A.store.get('djTalk', 'always'), bias: 0, played: new Set(), recentArtists: [], n: 0, started: Date.now(), focus: null, artistFocus: null, dead: false };
       A.store.set('djStyle', dj.s.style);
       const first = dj._pick(); if (!first) { A.toast('Couldn’t find tracks for that vibe'); return false; }
       dj._mark(first);
@@ -197,7 +232,13 @@
     stop() { if (dj.s) { A.speech.cancel(); dj.s = null; dj.emit('stop'); } },
 
     _mark(t) { const s = dj.s; s.played.add(t.id); s.recentArtists.push(t.artist); if (s.recentArtists.length > 5) s.recentArtists.shift(); },
-    _targetEnergy() { const s = dj.s, [a, b] = s.vibe.e; const mid = (a + b) / 2, wave = 0.09 * Math.sin((s.n / 9) * Math.PI * 2 - Math.PI / 2); return A.clamp(mid + s.bias * 0.3 + wave, 0, 1); },
+    _targetEnergy() {
+      const s = dj.s, [a, b] = s.vibe.e, J = A.JOURNEYS[s.journey];
+      if (J && J.f) { const lo = Math.max(0, a - 0.12), hi = Math.min(1, b + 0.12); return A.clamp(lo + J.f(Math.min(1, s.n / JLEN)) * (hi - lo) + s.bias * 0.3, 0, 1); }
+      const mid = (a + b) / 2, wave = 0.09 * Math.sin((s.n / 9) * Math.PI * 2 - Math.PI / 2); return A.clamp(mid + s.bias * 0.3 + wave, 0, 1);
+    },
+    progress() { const s = dj.s; return s ? Math.min(1, s.n / JLEN) : 0; },
+    setJourney(id) { const s = dj.s; A.store.set('djJourney', id); if (!s || !A.JOURNEYS[id]) return; s.journey = id; s.n = Math.min(s.n, 1); dj.refill(); dj.say(id === 'steady' ? 'Keeping it steady.' : `New plan: ${A.JOURNEYS[id].name.toLowerCase()}.`, { quick: true, duck: true }); dj.emit('vibe'); },
     _pick(prev) {
       const s = dj.s; if (!s) return null;
       let pool = L.tracks.filter((t) => !s.played.has(t.id));
@@ -209,6 +250,9 @@
         if (t.an) sc += 0.28 * (1 - Math.min(1, Math.abs(t.an.energy - target) / 0.4));
         if (s.recentArtists.includes(t.artist)) sc -= 0.4;
         if (last && last.an && t.an) { sc += 0.12 * (1 - Math.min(1, Math.abs(last.an.energy - t.an.energy) / 0.35)); if (last.an.tempo && t.an.tempo) sc += 0.08 * (1 - Math.min(1, Math.abs(last.an.tempo - t.an.tempo) / 35)); }
+        // songs that can be beat-matched with the one before them mix far better: give them a nudge
+        const ga = last && last.an && last.an.mix, gb = t.an && t.an.mix;
+        if (ga && gb) { const q = ga.bpm / gb.bpm, d = Math.min(...[q, q / 2, q * 2].map((x) => Math.abs(x - 1))); sc += d <= 0.06 ? 0.14 * (1 - d / 0.06) : -0.04; }
         if (s.focus) sc += 0.5 * (s.focusSim.get(t.id) || 0);
         if (s.artistFocus && nrm(t.artist) === s.artistFocus) sc += 0.55;
         if (t.liked) sc += 0.06; if (t.plays) sc += Math.min(0.06, t.plays * 0.01);
@@ -254,8 +298,23 @@
       if (/(more energy|faster|upbeat|louder|hype|turn it up|pump|bangers)/.test(q)) { s.bias = Math.min(1, s.bias + 0.6); did = did || 'Turning up the energy'; }
       if (/(slower|calm|chill|relax|softer|quiet|sleep|mellow|sad)/.test(q)) { s.bias = Math.max(-1, s.bias - 0.6); did = did || 'Easing back'; }
       if (/(different|something else|change|new)/.test(q)) { s.focus = null; s.artistFocus = null; did = did || 'Changing it up'; }
-      if (!did) { dj.say('I couldn’t match that to your library, but try a genre, an artist, or a mood like chill or hype.', { quick: true }); return false; }
+      if (!did) { dj.askClaude(text); return true; }
       dj.refill(); dj.say(did + '.', { quick: true, duck: true }); dj.emit('vibe'); return true;
+    },
+
+    async askClaude(text) {
+      const s = dj.s; if (!s) return;
+      const fail = () => dj.say('I couldn’t match that to your library, but try a genre, an artist, or a mood like chill or hype.', { quick: true });
+      if (!(await A.safety.secretGet('aiKey'))) return fail();
+      dj.emit('say', { text: 'Let me dig through your records…', dj: A.DJ_STYLES[s.style].dj });
+      const r = await llmRequest(text); if (!r || dj.s !== s) return fail();
+      const d = L.derive(), byName = (arr, n) => arr.find((x) => A.norm(x.name) === A.norm(n));
+      const v = r.vibe && A.vibeById(r.vibe); if (v) s.vibe = v;
+      const gs = (r.genres || []).map((g) => byName(d.genres, g)).filter(Boolean); if (gs.length) s.genres = new Set(gs.map((g) => g.key));
+      const ar = (r.artists || []).map((a) => byName(d.artists, a)).filter(Boolean)[0]; if (ar) s.artistFocus = ar.key;
+      if (typeof r.energy === 'number') s.bias = A.clamp(r.energy, -1, 1);
+      if (!v && !gs.length && !ar && typeof r.energy !== 'number') return fail();
+      dj.refill(); dj.say(r.reply || 'On it.', { quick: true, duck: true }); dj.emit('vibe');
     },
 
     // ----- speaking -----
@@ -272,6 +331,7 @@
     async onTrack(track, prev) {
       const s = dj.s; if (!s || s.dead) return;
       const first = s.n === 0; s.n++;
+      if (s.journey === 'wind' && s.n === JLEN && !P.sleep) { P.setSleep('end'); A.toast('Wind down: Aurora stops after this song'); }
       dj.ensure(); dj.emit('track', track);
       const freq = s.talk; if (freq === 'off') return;
       if (!first && ((freq === 'often' && s.n % 2) || (freq === 'rare' && s.n % 4))) return;

@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.7.0",
+    "date": "2026-10-25",
+    "notes": [
+      "Real DJ mixing: the AI DJ now matches tempos, locks the beats together and blends on phrase boundaries, with a Best parts mode that plays the strongest section of each song",
+      "Flow Architect: build a journey from one mood to another (calm to nostalgic to euphoric) for 20 minutes to 2 hours, preview it, drag to reorder",
+      "Just press play and Perfect Next Song: Aurora keeps the music going with songs that fit (Familiar, Surprise me or Somewhere new) and learns from skips",
+      "Lyrics: smooth line highlighting, full-screen lyrics, saved favourite lines, and Find lyrics from the free LRCLIB library",
+      "Immersive Now Playing with visuals that follow the music (Aurora, Ambient, Bloom), colours from the album cover and a zen mode",
+      "Mini player that floats over other windows, plus keyboard shortcuts you can change and global shortcuts on Windows",
+      "Smart playlists, DJ journeys, your listening Recap, On This Day and Forgotten Favourites",
+      "Your data is safe across updates: automatic backups before every update, merge-only restore, and a safety net that rolls back an update that fails to start",
+      "Signed updates: every update is checked against Aurora's signature before it installs"
+    ]
+  },
+  {
     "version": "1.6.2",
     "date": "2026-10-19",
     "notes": [

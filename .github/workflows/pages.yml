@@ -34,6 +34,7 @@ jobs:
         run: node tools/publish-web.js --out site
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AURORA_UPDATE_KEY: ${{ secrets.AURORA_UPDATE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

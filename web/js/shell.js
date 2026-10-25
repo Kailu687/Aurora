@@ -10,7 +10,7 @@
     set('tb-back', 'left'); set('tb-fwd', 'right'); set('tb-search-ic', 'search'); set('tb-settings', 'gear'); set('side-close', 'x');
     set('pb-prev', 'prev'); set('pb-next', 'next'); set('pb-lyrics', 'mic'); set('pb-queue', 'queue'); set('pb-sound', 'sliders'); set('pb-expand', 'expand');
     set('np-close', 'down'); set('np-like', 'heart'); set('np-more', 'more'); set('np-prev', 'prev'); set('np-next', 'next'); set('np-t-lyrics', 'mic'); set('np-t-sound', 'sliders'); set('np-t-queue', 'queue'); set('drop-ic', 'upload');
-    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], stats: ['chart', 'Stats'] };
+    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], stats: ['chart', 'Stats'] };
     $$('#nav a').forEach((a) => { const [i, l] = labels[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
     const short = { home: ['home', 'Home'], search: ['search', 'Search'], dj: ['spark', 'DJ'], library: ['library', 'Library'] };
     $$('#mobilenav a').forEach((a) => { const [i, l] = short[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
@@ -111,7 +111,7 @@
   // ---------- queue / lyrics / DJ panels ----------
   const trk = (id) => L.byId.get(id);
   function qItem(t, kind, idx, now) {
-    return `<div class="q-item${now ? ' now' : ''}" draggable="${now ? 'false' : 'true'}" data-qk="${kind}" data-qi="${idx}" data-tid="${t.id}">${U.cover(t)}<div class="m"><b class="ellip">${esc(t.title)}</b><small class="ellip">${esc(t.artist)}</small></div>${now ? '' : `<button class="icon-btn sm" data-a="q-remove" aria-label="Remove">${icon('x')}</button>`}</div>`;
+    return `<div class="q-item${now ? ' now' : ''}" draggable="${now ? 'false' : 'true'}" data-qk="${kind}" data-qi="${idx}" data-tid="${t.id}">${U.cover(t)}<div class="m"><b class="ellip">${esc(t.title)}</b><small class="ellip">${esc(t.artist)}</small>${!now && A.flow && A.flow.reasons.has(t.id) ? `<small class="ellip q-why">${icon('spark')} ${esc(A.flow.reasons.get(t.id))}</small>` : ''}</div>${now ? '' : `<button class="icon-btn sm" data-a="q-remove" aria-label="Remove">${icon('x')}</button>`}</div>`;
   }
   function renderQueue(host) {
     const cur = P.current; if (!cur) { host.innerHTML = `<div class="no-lyrics">${icon('queue')}<div>Your queue is empty.<br>Play something to get started.</div></div>`; return; }
@@ -119,7 +119,8 @@
     host.innerHTML = `<div class="q-sec">Now playing</div>${qItem(cur, 'now', 0, true)}
       ${uq.length ? `<div class="q-sec"><span>Next in queue</span><button class="muted" data-a="q-clear-user">Clear</button></div>${uq.map((t, i) => qItem(t, 'user', i)).join('')}` : ''}
       ${up.length ? `<div class="q-sec"><span>Next from ${esc(P.context.name || 'library')}</span></div>${up.map((t, i) => qItem(t, 'ctx', i)).join('')}` : ''}
-      ${!uq.length && !up.length ? `<div class="no-lyrics"><div>That’s the end of the queue.${P.autoplay ? '<br>Autoplay will keep the music going.' : ''}</div></div>` : ''}`;
+      ${!uq.length && !up.length ? `<div class="no-lyrics"><div>That’s the end of the queue.</div></div>` : ''}
+      ${P.context.type !== 'dj' && A.flow ? `<div class="q-sec"><span>When the queue runs out</span></div><div class="q-cont">${A.flow.modeChips('seg sm')}<button class="chip${P.autoplay ? '' : ' on'}" data-a="cont-mode" data-id="off">Stop</button></div>` : ''}`;
   }
   async function loadLyrics() {
     const t = P.current; if (!t) { ls.lyr = null; return; }
@@ -130,17 +131,18 @@
   function renderLyrics(host) {
     const l = ls.lyr; if (!P.current) { host.innerHTML = `<div class="no-lyrics">${icon('mic')}<div>Play a song to see lyrics.</div></div>`; return; }
     if (!l || l.data === undefined) { host.innerHTML = '<div class="no-lyrics muted">Looking for lyrics…</div>'; return; }
-    if (!l.data) { host.innerHTML = `<div class="no-lyrics">${icon('mic')}<div><b>No lyrics for this song</b><br><span style="font-size:13px">Put a .lrc file next to the song, or paste lyrics yourself.</span></div><button class="btn ghost sm" data-a="edit-current">${icon('edit')} Add lyrics</button></div>`; return; }
-    host.innerHTML = `<div class="lyrics${l.data.synced ? '' : ' plain'}">${l.data.lines.map((x, i) => `<p data-i="${i}" ${x.t >= 0 ? `data-t="${x.t}"` : ''}>${esc(x.s)}</p>`).join('')}</div>`;
-    l.idx = -1;
+    host.innerHTML = A.lyr.html(l, P.current); l.idx = -1;
+    // nothing on the device: look it up on the free lyrics library once (can be turned off in Settings)
+    const t = P.current;
+    if (l.data === null && !l.tried && A.lyr.auto() && navigator.onLine !== false && !A.lyr.missedRecently(t)) {
+      l.tried = true; A.lyr.find(t).then((r) => { if (r && P.current && P.current.id === t.id) loadLyrics(); else { renderSide(); renderNpPanel(); } }).catch(() => { renderSide(); renderNpPanel(); });
+      host.innerHTML = A.lyr.html(l, t);
+    }
   }
-  function syncLyrics(t) {
-    const l = ls.lyr; if (!l || !l.data || !l.data.synced) return;
-    const vis = $$('.lyrics:not(.plain)'); if (!vis.length) return;
-    const lines = l.data.lines; let i = -1; for (let k = 0; k < lines.length; k++) { if (lines[k].t <= t + 0.25) i = k; else break; }
-    if (i === l.idx) return; l.idx = i;
-    vis.forEach((box) => { const ps = box.children; for (let k = 0; k < ps.length; k++) { ps[k].classList.toggle('on', k === i); ps[k].classList.toggle('past', k < i); } if (ps[i]) { const sc = box.closest('#side-body, .np-panel'); if (sc && sc.offsetParent) sc.scrollTo({ top: ps[i].offsetTop - sc.clientHeight * 0.32, behavior: 'smooth' }); } });
-  }
+  function syncLyrics(t) { A.lyr.sync(ls.lyr, t); }
+  A.lyr.state = () => ls.lyr;
+  A.lyr.onChange = (reload) => { if (reload) loadLyrics(); else { renderSide(); renderNpPanel(); } };
+  A.lyr.showTab = () => { ls.npTab = 'lyrics'; renderNpPanel(); };
   function renderDJPanel(host) {
     const dj = A.dj;
     if (dj.active) {
@@ -175,9 +177,10 @@
     $('#pb-lyrics').classList.toggle('on', tab === 'lyrics'); $('#pb-queue').classList.toggle('on', tab === 'queue');
   }
   let npPushed = false;
+  A.openNp = (o, nb) => openNp(o, nb);
   function openNp(open = true, noBack = false) {
     const was = els.np.classList.contains('open');
-    els.np.classList.toggle('open', open); els.np.setAttribute('aria-hidden', !open); document.body.classList.toggle('np-open', open);
+    els.np.classList.toggle('open', open); els.np.setAttribute('aria-hidden', !open); document.body.classList.toggle('np-open', open); if (!open) document.body.classList.remove('lyr-full', 'np-zen');
     if (open) { if (!P.current) { els.np.classList.remove('open'); document.body.classList.remove('np-open'); return; } renderNpPanel(); }
     // browsers/PWA: make the phone's back gesture close the player instead of leaving the app
     if (!A.isNative) {
@@ -264,30 +267,6 @@
     if (files.length) runImport((p) => L.addFiles(files, p));
   }
 
-  // ---------- backup ----------
-  const sig = (t) => A.norm(t.artist) + '|' + A.norm(t.title) + '|' + Math.round(t.duration);
-  function exportData() {
-    const data = {
-      app: 'aurora', v: 1, at: Date.now(),
-      playlists: L.playlists.map((p) => ({ name: p.name, tracks: L.get(p.tracks).map(sig) })),
-      tracks: L.tracks.filter((t) => t.liked || t.plays).map((t) => ({ s: sig(t), liked: t.liked, plays: t.plays, last: t.last })),
-      history: P.hist.map(([id, at]) => [L.byId.has(id) ? sig(L.byId.get(id)) : '', at]).filter((h) => h[0]),
-      settings: Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('aurora:') && !/history|playlists|aiKey/.test(k)).map((k) => [k, localStorage.getItem(k)]))
-    };
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })); a.download = 'aurora-backup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  }
-  async function importData(file) {
-    try {
-      const d = JSON.parse(await file.text()); if (d.app !== 'aurora') throw new Error('Not an Aurora backup');
-      const map = new Map(L.tracks.map((t) => [sig(t), t]));
-      d.tracks.forEach((x) => { const t = map.get(x.s); if (t) { t.liked = x.liked || t.liked; t.plays = Math.max(t.plays, x.plays || 0); t.last = Math.max(t.last, x.last || 0); L.touch(t); } });
-      d.playlists.forEach((p) => { const ids = p.tracks.map((s) => map.get(s)).filter(Boolean).map((t) => t.id); L.newPlaylist(p.name, ids); });
-      const hist = (d.history || []).map(([s, at]) => [map.get(s) && map.get(s).id, at]).filter((h) => h[0]); P.hist = [...P.hist, ...hist].sort((a, b) => a[1] - b[1]); A.store.set('history', P.hist);
-      Object.entries(d.settings || {}).forEach(([k, v]) => { try { localStorage.setItem(k, v); } catch { /* */ } });
-      L.changed(); A.toast('Backup restored'); setTimeout(() => location.reload(), 900);
-    } catch (e) { A.toast('Import failed: ' + e.message); }
-  }
-
   // ---------- sound popover ----------
   function soundModal() {
     U.modal({
@@ -295,16 +274,20 @@
       <div class="sound-row"><span>Speed</span><div class="actions" style="padding:0">${[0.75, 1, 1.25, 1.5, 2].map((s) => `<button class="chip sp${s === E.rate ? ' on' : ''}" data-sp="${s}">${s}x</button>`).join('')}</div></div>
       <div class="sound-row"><span>Crossfade</span><input class="range" type="range" min="0" max="12" value="${E.crossfade}" id="m-cf"><b id="m-cfv">${E.crossfade ? E.crossfade + 's' : 'Off'}</b></div>
       <div class="sound-row"><span>Sleep</span><div class="actions" style="padding:0">${[['Off', 0], ['15m', 15], ['30m', 30], ['60m', 60], ['End of song', 'end']].map(([l, v]) => `<button class="chip sl" data-sl="${v}">${l}</button>`).join('')}</div></div>
+      <div class="sound-row"><span>Loop</span><div class="actions" style="padding:0"><button class="chip lp" data-lp="a">Set A</button><button class="chip lp" data-lp="b">Set B</button><button class="chip lp" data-lp="clear">Off</button><b id="m-lpv" class="muted" style="font-weight:500;font-size:13px"></b></div></div>
       <div class="sound-row"><span>EQ preset</span><div class="actions" style="padding:0">${Object.keys(A.EQ_PRESETS).map((n) => `<button class="chip eqp" data-eqp="${esc(n)}">${esc(n)}</button>`).join('')}</div></div>
       <p class="faint" style="font-size:13px">Fine-tune the 10-band equalizer in <a href="#/settings" style="text-decoration:underline" id="m-set">Settings</a>.</p>`,
       buttons: [{ label: 'Done', cls: 'accent', value: null }],
       onOpen: (bg, done) => {
         $('#m-cf', bg).oninput = (e) => { E.setCrossfade(+e.target.value); $('#m-cfv', bg).textContent = +e.target.value ? e.target.value + 's' : 'Off'; };
         $('#m-set', bg).onclick = () => done(null);
+        const lpv = () => { const l = P.loop && P.current && P.loop.id === P.current.id ? P.loop : null; $('#m-lpv', bg).textContent = !l ? 'Practice a part of the song' : l.b > l.a ? `${fmt(l.a)} to ${fmt(l.b)}, repeating` : `From ${fmt(l.a)}, now set B`; };
+        lpv();
         bg.addEventListener('click', (e) => {
           const sp = e.target.closest('.sp'), sl = e.target.closest('.sl'), ep = e.target.closest('.eqp');
           if (sp) { E.setRate(+sp.dataset.sp); $$('.sp', bg).forEach((b) => b.classList.toggle('on', b === sp)); }
           if (sl) { const v = sl.dataset.sl; P.setSleep(v === 'end' ? 'end' : +v || null); A.toast(+v || v === 'end' ? 'Sleep timer on' : 'Sleep timer off'); $$('.sl', bg).forEach((b) => b.classList.toggle('on', b === sl)); }
+          const lp = e.target.closest('.lp'); if (lp) { if (!P.isLoaded()) { A.toast('Play the song first'); return; } if (lp.dataset.lp === 'clear') P.clearLoop(); else P.setLoopPoint(lp.dataset.lp); lpv(); }
           if (ep) { E.setEQAll(A.EQ_PRESETS[ep.dataset.eqp]); A.toast('EQ: ' + ep.dataset.eqp); $$('.eqp', bg).forEach((b) => b.classList.toggle('on', b === ep)); }
         });
       }
@@ -334,6 +317,7 @@
       const p = L.playlists.find((x) => x.id === el.dataset.id); if (!p) return;
       U.menu(e.clientX, e.clientY, [
         { label: 'Rename', icon: 'edit', onClick: async () => { const n = await U.prompt('Rename playlist', p.name); if (n) { p.name = n; L.savePlaylists(); L.changed(); } } },
+        ...(p.rules ? [{ label: 'Edit rules', icon: 'sliders', onClick: () => A.feat.smartEditor(p) }, { label: 'Save as a normal playlist', icon: 'list', onClick: () => { const np = L.newPlaylist(p.name + ' (copy)', p.tracks); location.hash = '#/playlist/' + np.id; } }] : []),
         { label: 'Add all to queue', icon: 'queue', onClick: () => { P.addToQueue(p.tracks); A.toast('Added to queue'); } },
         { label: 'Delete playlist', icon: 'trash', danger: true, onClick: async () => { if (await U.confirm('Delete playlist?', `"${p.name}" will be deleted. Songs stay in your library.`, 'Delete', true)) { L.deletePlaylist(p); location.hash = '#/library'; } } }]);
     },
@@ -363,13 +347,26 @@
       else if (k === 'autoUpdate') A.store.set('autoUpdate', on);
       else if (k === 'onlineCovers') { A.store.set('onlineCovers', on); if (on) { L.tracks.forEach((t) => { t.coverTried = 0; }); L.fetchCovers(); } }
       else if (k === 'analyze') A.analysis.setEnabled(on); else if (k === 'bgAnim') { A.store.set('bgAnim', on); document.body.classList.toggle('calm', !on); }
+      else if (['immersive', 'zen', 'autoLyrics'].includes(k)) A.store.set(k, on);
     },
     'eq-preset': (el) => { E.setEQAll(A.EQ_PRESETS[el.dataset.id]); $$('[data-eq]').forEach((i) => (i.value = E.eqGains[+i.dataset.eq])); },
     'set-theme': (el) => { A.setTheme(el.dataset.id); A.render(true); },
     'set-accent': (el) => { A.store.set('accent', el.dataset.id); U.applyAccent(U._lastColor); A.render(true); },
     'test-voice': () => A.dj.say('Hey, it’s your DJ. Testing, one, two. How do I sound?', { duck: false }),
     reanalyze: () => { A.analysis.reset(); A.toast('Re-analyzing your library'); A.render(true); },
-    export: exportData, import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json'; i.onchange = () => i.files[0] && importData(i.files[0]); i.click(); },
+    export: () => A.safety.exportFile(), import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json'; i.onchange = () => i.files[0] && A.safety.importFile(i.files[0]); i.click(); },
+    'snapshot-now': async () => { await A.safety.snapshot('Made by you'); A.toast('Backed up on this device'); A.render(true); },
+    'restore-snap': async (el) => {
+      const d = await A.safety.get(+el.dataset.id); if (!d) return A.toast('That backup is gone');
+      if (!(await U.confirm('Restore this backup?', `From ${new Date(d.at).toLocaleString()}. Likes, play counts, playlists and history from it are added back. Nothing you have now is deleted.`, 'Restore'))) return;
+      await A.safety.snapshot('Before restore'); await A.safety.restore(d); A.toast('Backup restored'); setTimeout(() => location.reload(), 900);
+    },
+    'whats-new': () => A.updater.whatsNew({ force: true }),
+    'update-mode': (el) => { A.store.set('updateMode', el.dataset.id); A.render(true); },
+    recap: (el) => A.feat.recap(el.dataset.id),
+    'smart-new': () => A.feat.smartEditor(), 'smart-edit': (el) => { const p = L.playlists.find((x) => x.id === el.dataset.id); if (p) A.feat.smartEditor(p); },
+    'dj-journey': (el) => A.dj.setJourney(el.dataset.id),
+    'dj-journey-pick': (el) => { V().djSel.journey = el.dataset.id; A.store.set('djJourney', el.dataset.id); A.render(true); },
     install: async () => {
       if (A._installEvt) { A._installEvt.prompt(); A._installEvt = null; return; }
       U.modal({ title: 'Install Aurora', html: '<p class="muted">On <b>iPhone / iPad</b>: tap the Share button, then <b>Add to Home Screen</b>.<br><br>On <b>Android</b>: open the browser menu (⋮) and choose <b>Install app</b> / <b>Add to Home screen</b>.<br><br>On <b>desktop Chrome / Edge</b>: click the install icon at the right of the address bar.</p>', buttons: [{ label: 'Got it', cls: 'accent', value: null }] });
@@ -380,7 +377,8 @@
     'nt-perm': () => { if (A.native) { A.native.requestPermission(); setTimeout(() => A.render(true), 1500); } },
     'reset-defaults': async () => {
       if (!(await U.confirm('Reset to defaults?', 'All settings go back to their defaults and the app reloads. Songs, playlists, likes and history are kept.', 'Reset', true))) return;
-      const keep = new Set(['aurora:playlists', 'aurora:history', 'aurora:session']);
+      const keep = new Set(['aurora:playlists', 'aurora:history', 'aurora:session', 'aurora:lastSnapshot', 'aurora:seenVersion']);
+      await A.safety.secretSet('aiKey', '');
       Object.keys(localStorage).filter((k) => k.startsWith('aurora:') && !keep.has(k)).forEach((k) => localStorage.removeItem(k));
       try { if (A.dj.s) A.dj.stop(); } catch { /* */ }
       A.toast('Settings reset'); setTimeout(() => location.reload(), 600);
@@ -389,8 +387,9 @@
     'dj-pick': (el) => { V().djSel.vibe = el.dataset.id; A.render(true); },
     'dj-genre': (el) => { const s = V().djSel.genres, g = el.dataset.id; s.has(g) ? s.delete(g) : s.add(g); A.render(true); },
     'dj-style': (el) => { V().djSel.style = el.dataset.id; A.store.set('djStyle', el.dataset.id); A.render(true); },
+    'dj-mix': (el) => { A.mixer.setMode(el.dataset.id); if (A.route.name === 'dj') A.render(true); },
     'dj-talk': (el) => { V().djSel.talk = el.dataset.id; A.store.set('djTalk', el.dataset.id); A.render(true); },
-    'dj-go': () => { const s = V().djSel; A.store.set('djTalk', s.talk); A.dj.start({ vibe: s.vibe, genres: [...s.genres], style: s.style, talk: s.talk }); },
+    'dj-go': () => { const s = V().djSel; A.store.set('djTalk', s.talk); A.dj.start({ vibe: s.vibe, genres: [...s.genres], style: s.style, talk: s.talk, journey: s.journey }); },
     'dj-surprise': () => { const v = A.pick(A.VIBES).id; V().djSel.vibe = v; A.dj.start({ vibe: v, style: V().djSel.style, talk: V().djSel.talk }); if (A.route.name !== 'dj') location.hash = '#/dj'; },
     'dj-start': (el) => { A.dj.start({ vibe: el.dataset.id, style: V().djSel.style, talk: V().djSel.talk }); if (A.route.name !== 'dj' && !isMobile()) location.hash = '#/dj'; },
     'dj-stop': () => { A.dj.stop(); A.render(true); renderSide(); renderNpPanel(); },
@@ -403,6 +402,7 @@
   function bindGlobal() {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-a]'); 
+      if (el && el.tagName === 'A' && /^javascript:/i.test(el.getAttribute('href') || '')) e.preventDefault();
       if (el) { const f = ACT[el.dataset.a]; if (f) { if (el.closest('a') && el.tagName !== 'A') { e.preventDefault(); } if (el.dataset.a !== 'close-np' || el.tagName !== 'A') e.stopPropagation(); f(el, e); if (el.dataset.a === 'close-np' && el.tagName === 'A') { /* let link navigate */ } return; } }
       const row = e.target.closest('.row[data-tid], .q-item[data-tid]');
       if (row && !e.target.closest('a, button')) {
@@ -412,7 +412,7 @@
         if (P.current && P.current.id === t.id && row.classList.contains('playing')) { P.toggle(); return; }
         const c = ctxFrom(row); if (c) P.playContext(c.ids, t.id, c.meta); else P.playTrackNow(t);
       }
-      const ly = e.target.closest('.lyrics:not(.plain) p[data-t]'); if (ly) E.seek(+ly.dataset.t);
+      const ly = e.target.closest('.lyrics.synced p[data-t]'); if (ly) E.seek(Math.max(0, +ly.dataset.t + A.lyr.offset(P.current)));
     });
     document.addEventListener('submit', (e) => { const f = e.target.closest('[data-a-submit]'); if (f) { e.preventDefault(); SUBMIT[f.dataset.aSubmit](f); } });
     document.addEventListener('contextmenu', (e) => { const r = e.target.closest('.row[data-tid], .q-item[data-tid]'); if (r) { e.preventDefault(); const t = trk(r.dataset.tid); const pl = A.route.name === 'playlist' ? L.playlists.find((p) => p.id === A.route.arg) : null; t && U.trackMenu(e, t, { playlist: pl }); } });
@@ -445,24 +445,17 @@
     // keyboard
     document.addEventListener('keydown', (e) => {
       const tag = (e.target.tagName || '').toLowerCase(); const typing = ['input', 'textarea', 'select'].includes(tag) && e.target.type !== 'range';
-      if (e.key === 'Escape') { if (els.np.classList.contains('open')) openNp(false); else if ($('#app').classList.contains('side-open')) ACT['close-side'](); U.closeMenu(); return; }
+      if (e.key === 'Escape') { if (document.body.classList.contains('lyr-full')) { document.body.classList.remove('lyr-full'); return; } if (els.np.classList.contains('open')) openNp(false); else if ($('#app').classList.contains('side-open')) ACT['close-side'](); U.closeMenu(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#q').focus(); return; }
-      if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
-      const k = e.key;
-      if (k === ' ') { e.preventDefault(); P.toggle(); }
-      else if (k === 'ArrowRight') { e.preventDefault(); e.shiftKey ? P.next() : E.seek(E.time + 5); }
-      else if (k === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? P.prev() : E.seek(E.time - 5); }
-      else if (k === 'ArrowUp') { e.preventDefault(); E.setVolume(E.volume + 0.05); } else if (k === 'ArrowDown') { e.preventDefault(); E.setVolume(E.volume - 0.05); }
-      else if (/^m$/i.test(k)) E.toggleMute(); else if (/^l$/i.test(k)) ACT['like-current']();
-      else if (/^s$/i.test(k)) P.toggleShuffle(); else if (/^r$/i.test(k)) P.cycleRepeat();
-      else if (/^q$/i.test(k)) openSide('queue'); else if (/^y$/i.test(k)) openSide('lyrics');
-      else if (/^f$/i.test(k)) openNp(!els.np.classList.contains('open')); else if (/^d$/i.test(k) && A.djEnabled()) location.hash = '#/dj';
-      else if (k === '/') { e.preventDefault(); $('#q').focus(); }
+      if (typing || e.metaKey) return;
+      if (A.anywhere) A.anywhere.handle(e);
     });
   }
 
   // ---------- boot ----------
   async function boot() {
+    if (await A.updater.bootApply()) return; // an update downloaded last time: installed, page reloads
+    if (document.readyState === 'loading') await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true })); // every script has run
     document.body.classList.toggle('electron', A.isDesktop);
     document.documentElement.style.setProperty('--blur', A.store.get('blur', 26) + 'px');
     document.body.classList.toggle('calm', A.store.get('bgAnim', true) === false);
@@ -471,6 +464,8 @@
     cacheEls(); initIcons(); A.setTheme(A.store.get('theme', 'dark')); U.applyAccent(null);
     updateStateUI(); updateVol(); updateTrackUI(); bindGlobal(); bindDJ();
     try { await L.load(); } catch (e) { console.error(e); A.toast('Storage unavailable — library won’t persist'); }
+    if (A.isDesktop && window.desktop.adoptRoots) await window.desktop.adoptRoots(L.roots.filter((r) => r.path).map((r) => r.path)).catch(() => {});
+    await A.safety.recover(); A.safety.migrateSecrets().catch(() => {});
     // Android: songs used to be copied into the app. Remove those copies now that folders are linked instead.
     if (window.AuroraAndroid && window.AuroraAndroid.scan) {
       const copied = L.tracks.filter((t) => t.kind === 'blob');
@@ -498,6 +493,7 @@
     checkReconnect();
     setTimeout(() => A.analysis.start(), 2500);
     A.updater.load().then(() => A.updater.start());
+    setTimeout(() => { A.updater.bootOk(); A.safety.daily(); A.updater.whatsNew().catch(() => {}); }, 2500);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the OS not to evict the song library
     if ('serviceWorker' in navigator && !A.isDesktop && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); A._installEvt = e; $('#btn-install').hidden = false; });

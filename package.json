@@ -1,7 +1,7 @@
 {
   "name": "aurora-player",
   "productName": "Aurora",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Aurora - a glassmorphic music player for your own songs, with an AI DJ. Web, Android and Windows.",
   "main": "electron/main.js",
   "author": "Kailu687",
@@ -58,7 +58,8 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Aurora"
+      "shortcutName": "Aurora",
+      "deleteAppDataOnUninstall": false
     }
   }
 }

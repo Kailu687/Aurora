@@ -83,7 +83,7 @@
   window.addEventListener('blur', U.closeMenu);
 
   U.pickPlaylist = async (ids) => {
-    const items = L.playlists.map((p) => `<button class="pick" data-pid="${p.id}">${L.coverHTML(L.artFor(p), p.id)}<div><b>${esc(p.name)}</b><br><small class="muted">${p.tracks.length} songs</small></div></button>`).join('');
+    const items = L.playlists.filter((p) => !p.rules).map((p) => `<button class="pick" data-pid="${p.id}">${L.coverHTML(L.artFor(p), p.id)}<div><b>${esc(p.name)}</b><br><small class="muted">${p.tracks.length} songs</small></div></button>`).join('');
     const r = await U.modal({
       title: 'Add to playlist', html: `<button class="pick" data-pid="__new"><div class="cover ph" style="background:var(--glass2);width:42px;height:42px;border-radius:8px">${icon('plus')}</div><b>New playlist</b></button>${items}`,
       buttons: [{ label: 'Cancel', value: null }],
@@ -112,7 +112,7 @@
     });
     if (!r) return;
     const bg = null; void bg;
-    t.title = r.title.trim() || t.title; t.artist = r.artist.trim() || 'Unknown Artist'; t.album = r.album.trim(); t.genre = r.genre.trim(); t.year = parseInt(r.year, 10) || 0;
+    t.title = r.title.trim() || t.title; t.artist = r.artist.trim() || 'Unknown Artist'; t.album = r.album.trim(); t.genre = r.genre.trim(); t.year = parseInt(r.year, 10) || 0; t.edited = Date.now();
     await L.saveLyrics(t, r.lyrics); if (!r.lyrics.trim() && t.lyrics) t.lyrics = '';
     const f = $('#img-in').files[0];
     if (f) { const small = await A.shrinkCover(f); if (small) { t.artKey = 'c_' + t.id; await A.db.put('art', small, t.artKey); L.artUrls.set(t.artKey, URL.createObjectURL(small)); } }
@@ -128,7 +128,7 @@
       'hr',
       { label: liked ? 'Remove from Liked Songs' : 'Add to Liked Songs', icon: 'heart', onClick: () => L.toggleLike(t) },
       { label: 'Add to playlist…', icon: 'plus', onClick: () => U.pickPlaylist([t.id]) },
-      ...(o.playlist ? [{ label: 'Remove from this playlist', icon: 'x', onClick: () => L.removeFromPlaylist(o.playlist, t.id) }] : []),
+      ...(o.playlist && !o.playlist.rules ? [{ label: 'Remove from this playlist', icon: 'x', onClick: () => L.removeFromPlaylist(o.playlist, t.id) }] : []),
       'hr',
       { label: 'Go to artist', icon: 'user', onClick: () => { location.hash = '#/artist/' + U.artistId(t.artist); } },
       ...(t.album ? [{ label: 'Go to album', icon: 'disc', onClick: () => { location.hash = '#/album/' + U.albumId(t); } }] : []),
