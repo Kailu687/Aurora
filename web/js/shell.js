@@ -10,7 +10,7 @@
     set('tb-back', 'left'); set('tb-fwd', 'right'); set('tb-search-ic', 'search'); set('tb-settings', 'gear'); set('side-close', 'x');
     set('pb-prev', 'prev'); set('pb-next', 'next'); set('pb-lyrics', 'mic'); set('pb-queue', 'queue'); set('pb-sound', 'sliders'); set('pb-expand', 'expand');
     set('np-close', 'down'); set('np-like', 'heart'); set('np-more', 'more'); set('np-prev', 'prev'); set('np-next', 'next'); set('np-t-lyrics', 'mic'); set('np-t-sound', 'sliders'); set('np-t-queue', 'queue'); set('drop-ic', 'upload');
-    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], stats: ['chart', 'Stats'] };
+    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], audition: ['mic', 'AI Audition'], stats: ['chart', 'Stats'] };
     $$('#nav a').forEach((a) => { const [i, l] = labels[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
     const short = { home: ['home', 'Home'], search: ['search', 'Search'], dj: ['spark', 'DJ'], library: ['library', 'Library'] };
     $$('#mobilenav a').forEach((a) => { const [i, l] = short[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });

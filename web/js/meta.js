@@ -364,14 +364,34 @@
     const re = new Float32Array(W), im = new Float32Array(W), win = new Float32Array(W), pc = new Int8Array(W / 2), vox = new Uint8Array(W / 2);
     for (let i = 0; i < W; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (W - 1));
     for (let k = 0; k < W / 2; k++) { const f = (k * SR) / W; pc[k] = f < 80 || f > 4200 ? -1 : (Math.round(69 + 12 * Math.log2(f / 440)) % 12 + 12) % 12; vox[k] = f >= 300 && f <= 3400 ? 1 : 0; }
-    const ch = new Float32Array(n * 12), vr = new Float32Array(n), t0 = new Float32Array(n);
+    const ch = new Float32Array(n * 12), vr = new Float32Array(n), t0 = new Float32Array(n), mel = new Float32Array(n), sal = new Float32Array(n), en = new Float32Array(n);
+    const mag = new Float32Array(W / 2), wh = new Float32Array(W / 2), sc = new Float32Array(79), bw = SR / W, KW = Math.max(2, Math.round(120 / bw));
     for (let f = 0; f < n; f++) {
       const o = f * H; for (let i = 0; i < W; i++) { re[i] = data[o + i] * win[i]; im[i] = 0; }
       fft(re, im); let tot = 1e-9, v = 0;
-      for (let k = 2; k < W / 2; k++) { const m = Math.sqrt(re[k] * re[k] + im[k] * im[k]); tot += m; if (vox[k]) v += m; if (pc[k] >= 0) ch[f * 12 + pc[k]] += m; }
-      vr[f] = v / tot; t0[f] = (o + W / 2) / SR;
+      for (let k = 2; k < W / 2; k++) { const m = Math.sqrt(re[k] * re[k] + im[k] * im[k]); mag[k] = m; tot += m; if (vox[k]) v += m; if (pc[k] >= 0) ch[f * 12 + pc[k]] += m; }
+      vr[f] = v / tot; t0[f] = (o + W / 2) / SR; en[f] = tot;
+      // the most likely sung note (predominant melody): whiten the spectrum, then for every note A2..C6 add up its
+      // harmonics; the strongest note that also has a real fundamental wins
+      let run = 0; for (let k = 0; k < Math.min(W / 2, 2 * KW + 1); k++) run += mag[k];
+      for (let k = 0; k < W / 2; k++) { const lo = k - KW - 1, hi = k + KW; if (k > KW && hi < W / 2) { run += mag[hi] - mag[lo]; } wh[k] = mag[k] / (run / (2 * KW + 1) + 1e-9); }
+      const at = (fr) => { const x = fr / bw, i = Math.floor(x), t = x - i; return i + 1 < W / 2 ? wh[i] * (1 - t) + wh[i + 1] * t : 0; };
+      // (voices often have a weak fundamental, so all of the first 10 harmonics count; a candidate an octave too low
+      // only collects every other harmonic, and one an octave too high misses half of them)
+      let bs = 0, bm = 0; const S = sc; S.fill(0);
+      for (let j = 0; j < S.length; j++) {
+        const f0 = 440 * Math.pow(2, (45 + j * 0.5 - 69) / 12); let s = 0, hit = 0;
+        for (let h = 1; h <= 10 && h * f0 < 5000; h++) { const v = Math.max(0, at(h * f0) - 1); s += Math.pow(0.86, h - 1) * v; if (v > 0.5) hit++; }
+        S[j] = s * (0.6 + 0.4 * Math.min(1, hit / 5));
+      }
+      let bj = -1; for (let j = 0; j < S.length; j++) if (S[j] > bs) { bs = S[j]; bj = j; }
+      // the winner may be the 2nd harmonic of a lower note: take the octave below when it is nearly as strong and
+      // its odd harmonics (which the higher candidate can't explain) are really there
+      if (bj >= 24) { const fl = 440 * Math.pow(2, (45 + (bj - 24) * 0.5 - 69) / 12); if (S[bj - 24] >= 0.55 * bs && at(fl * 3) > 1.6 && at(fl) + at(fl * 5) > 2.6) bj -= 24; }
+      if (bj >= 0) bm = 45 + bj * 0.5;
+      mel[f] = bm; sal[f] = bs;
     }
-    return { ch, vr, t: t0, n };
+    return { ch, vr, t: t0, n, mel, sal, en };
   }
   A.mixAnalysis = function (data, SR) {
     const dur = data.length / SR; if (dur < 30) return null;
@@ -470,10 +490,25 @@
       const [c1, pc, minor] = sc[0], c2 = sc[1][0];
       key = { name: KEYS[pc] + (minor ? 'm' : ''), cam: A.camelot(pc, minor), minor: !!minor, clar: +A.clamp((c1 - c2) * 4 + c1 * 0.5, 0, 1).toFixed(2) };
     }
+    // 9) the sung melody's range (an estimate from the full mix): notes from frames that are loud, vocal-heavy and
+    //    have a clear pitch, as percentiles in MIDI note numbers. Used by AI Audition to match songs to a voice.
+    let mel = null;
+    if (cf) {
+      const idx = []; for (let f = 0; f < cf.n; f++) idx.push(f);
+      const ens = idx.map((f) => cf.en[f]).sort((p, q) => p - q), eMed = ens[Math.floor(ens.length / 2)] || 0;
+      const sals = idx.map((f) => cf.sal[f]).sort((p, q) => p - q), sTop = sals[Math.floor(sals.length * 0.4)] || 0;
+      const notes = []; for (let f = 0; f < cf.n; f++) if (cf.en[f] >= eMed * 0.6 && cf.sal[f] >= sTop && cf.vr[f] >= 0.2 && cf.mel[f]) notes.push(cf.mel[f]);
+      if (notes.length >= 40) {
+        notes.sort((p, q) => p - q); const q = (x) => +notes[Math.min(notes.length - 1, Math.floor(notes.length * x))].toFixed(1);
+        const hist = new Array(40).fill(0); notes.forEach((v) => { const i = Math.round(v) - 45; if (i >= 0 && i < 40) hist[i]++; });
+        const hm = Math.max(...hist) || 1;
+        mel = { p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), hist: hist.map((v) => Math.round((v / hm) * 99)), n: notes.length };
+      }
+    }
     const np = Math.floor(nb / 8);
     return {
       v: A.MIX_VERSION, bpm: +bpm.toFixed(2), beat0: +beat0.toFixed(3), bar0: +bar0.toFixed(3), bars: barsN, dur: +dur.toFixed(2),
-      hb, he, ib, lb, key, dance: +dance.toFixed(2), vocal: +(avg(bvx, 0, nb) || 0).toFixed(2),
+      hb, he, ib, lb, key, mel, dance: +dance.toFixed(2), vocal: +(avg(bvx, 0, nb) || 0).toFixed(2),
       hook: Math.floor(hb / 8), i0: Math.floor(ib / 8), last: Math.max(Math.floor(hb / 8), Math.min(np - 1, Math.ceil(lb / 8) - 1))
     };
   };

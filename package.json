@@ -1,7 +1,7 @@
 {
   "name": "aurora-player",
   "productName": "Aurora",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Aurora - a glassmorphic music player for your own songs, with an AI DJ. Web, Android and Windows.",
   "main": "electron/main.js",
   "author": "Kailu687",
@@ -20,7 +20,6 @@
     "android": "powershell -ExecutionPolicy Bypass -File tools/build-android.ps1",
     "windows": "electron-builder --win nsis",
     "hash": "node tools/hash-releases.js",
-    "try-voice": "electron tools/try-voice.js",
     "release": "powershell -ExecutionPolicy Bypass -File tools/build-all.ps1"
   },
   "devDependencies": {

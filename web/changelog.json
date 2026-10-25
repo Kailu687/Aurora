@@ -1,5 +1,16 @@
 [
  {
+  "version": "1.8.0",
+  "date": "2026-10-25",
+  "notes": [
+   "AI Audition: sing along to a few songs (Auto picks 3 for you, or choose your own) and Aurora finds the songs in your library that suit your voice, with the key to sing the rest in. Your singing is analysed on your device and never saved",
+   "AI DJ sounds real: a free studio voice that runs on your device (one-time download), short lines that fit the mood, and it talks over the quiet start of a song instead of over the mix",
+   "Mixes like a club DJ: echo outs, turntable brakes, build-ups that drop into the hook, filter blends and reverb washes, chosen to match the vibe",
+   "The DJ now finds each song's real hook (the part that repeats) and plays all of it, and picks songs in matching keys",
+   "Update notices only ask you to install a new app when yours is too old; Android downloads the app in one tap"
+  ]
+ },
+ {
   "version": "1.7.0",
   "date": "2026-10-25",
   "notes": [

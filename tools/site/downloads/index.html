@@ -125,7 +125,8 @@
     document.getElementById('releases').innerHTML = rels.map(function (r, i) {
       var notes = (r.notes || []).map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
       var a = r.android || {}, w = r.windows || {};
-      return '<article class="rel glass"><header><h3>Aurora ' + esc(r.version) + '</h3>' + (i === 0 ? '<span class="tag">LATEST</span>' : '') + (r.prerelease ? '<span class="tag" style="background:rgba(255,200,80,.15);color:#ffd070;border-color:rgba(255,200,80,.4)">PRE-RELEASE</span>' : '') + '<time>' + esc(day(r.date)) + '</time></header>' +
+      // each version is a dropdown: only the newest is open, so the page stays easy to scan
+      return '<details class="rel glass"' + (i === 0 ? ' open' : '') + '><summary><h3>Aurora ' + esc(r.version) + '</h3>' + (i === 0 ? '<span class="tag">LATEST</span>' : '') + (r.prerelease ? '<span class="tag" style="background:rgba(255,200,80,.15);color:#ffd070;border-color:rgba(255,200,80,.4)">PRE-RELEASE</span>' : '') + '<time>' + esc(day(r.date)) + '</time><span class="rel-n">' + (r.notes || []).length + ' changes</span></summary>' +
         '<ul>' + (notes || '<li>See the release page for details.</li>') + '</ul>' +
         '<div class="acts">' +
         '<a class="btn sm accent" href="' + esc(a.url || r.page || REPO + '/releases') + '">Android APK' + (a.size ? ' (' + mb(a.size) + ')' : '') + '</a>' +
@@ -135,7 +136,7 @@
         ((a.sha256 || w.sha256) ? '<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:14px">Checksums (SHA-256)</summary>' +
           (a.sha256 ? '<div class="hash" style="margin-top:8px"><b>APK</b> ' + esc(a.sha256) + '</div>' : '') +
           (w.sha256 ? '<div class="hash" style="margin-top:6px"><b>Windows</b> ' + esc(w.sha256) + '</div>' : '') + '</details>' : '') +
-        '</article>';
+        '</details>';
     }).join('');
     return true;
   }

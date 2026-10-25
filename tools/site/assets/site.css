@@ -77,7 +77,11 @@ pre.code { margin: 8px 0 0; padding: 14px 16px; border-radius: 14px; background:
 .dl-card .meta b { color: var(--text); font-weight: 650; }
 .hash { font: 12px/1.4 ui-monospace, Consolas, monospace; word-break: break-all; color: var(--faint); user-select: all; }
 .rel { padding: 22px 26px; margin-bottom: 14px; }
-.rel header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.rel header, .rel summary { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+details.rel > summary { cursor: pointer; list-style: none; margin: 0; } details.rel > summary::-webkit-details-marker { display: none; }
+details.rel > summary::after { content: "▾"; margin-left: auto; color: var(--faint); transition: transform .2s; } details.rel[open] > summary::after { transform: rotate(180deg); }
+details.rel[open] > summary { margin-bottom: 10px; } .rel .rel-n { color: var(--faint); font-size: 13px; }
+details.rel:not([open]) { padding-top: 16px; padding-bottom: 16px; }
 .rel h3 { font-size: 22px; margin: 0; } .rel time { color: var(--faint); font-size: 14px; }
 .tag { font-size: 12px; font-weight: 800; letter-spacing: .06em; padding: 3px 10px; border-radius: 999px; background: rgba(110,231,160,.15); color: #6ee7a0; border: 1px solid rgba(110,231,160,.35); }
 .rel ul { margin: 6px 0 14px; padding-left: 20px; color: var(--muted); } .rel li { margin: 4px 0; }
