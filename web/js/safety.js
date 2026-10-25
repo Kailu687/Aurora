@@ -19,6 +19,7 @@
     const out = [];
     try {
       if (!L().playlists.length) { const pl = await A.db.get('kv', 'mirror:playlists'); if (Array.isArray(pl) && pl.length) { L().playlists = pl; A.store.set('playlists', pl); out.push('playlists'); } }
+      if (!(A.store.get('savedLines', []) || []).length) { const sl = await A.db.get('kv', 'mirror:savedLines'); if (Array.isArray(sl) && sl.length) { A.store.set('savedLines', sl); out.push('saved lines'); } }
       if (!P().hist.length) { const h = await A.db.get('kv', 'mirror:history'); if (Array.isArray(h) && h.length) { P().hist = h; A.store.set('history', h); out.push('history'); } }
     } catch { /* no mirror yet */ }
     if (out.length) { L().changed(); A.log('recovered ' + out.join(', ') + ' from the mirror'); }
