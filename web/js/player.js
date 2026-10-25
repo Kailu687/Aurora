@@ -137,7 +137,7 @@
       const prev = this.current;
       if (prev && !o.noHistory && !o.replay && prev.id !== track.id) { this.history.push(prev.id); if (this.history.length > 200) this.history.shift(); }
       this.current = track; this.counted = false; this.preQueued = null; this.sleepEnd = false;
-      A.speech && A.speech.cancel(); // never carry a DJ intro into the next song
+      if (A.speech && !(A.dj && A.dj._keep)) A.speech.cancel(); // never carry a DJ intro into the next song (a shout timed to a drop is the exception)
       this.busy = true;
       try {
         if (o.mix && E.playing) await E.mixTo(track, L.urlFor(track), o.mix);

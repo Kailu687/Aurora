@@ -69,11 +69,22 @@
         // per-deck DJ filters: a high-pass for sweeps and a low shelf for bass swaps (both neutral unless a mix uses them)
         d.hp = ctx.createBiquadFilter(); d.hp.type = 'highpass'; d.hp.frequency.value = 10; d.hp.Q.value = 0.7;
         d.bass = ctx.createBiquadFilter(); d.bass.type = 'lowshelf'; d.bass.frequency.value = 180; d.bass.gain.value = 0;
-        d.node.connect(d.hp); d.hp.connect(d.bass); d.bass.connect(d.gain);
+        d.lp = ctx.createBiquadFilter(); d.lp.type = 'lowpass'; d.lp.frequency.value = 20000; d.lp.Q.value = 0.9;
+        d.node.connect(d.hp); d.hp.connect(d.lp); d.lp.connect(d.bass); d.bass.connect(d.gain);
+        // effect sends, taken before the deck's fader so an echo or reverb tail keeps ringing after the song is cut
+        d.esend = ctx.createGain(); d.esend.gain.value = 0; d.rsend = ctx.createGain(); d.rsend.gain.value = 0;
+        d.bass.connect(d.esend); d.bass.connect(d.rsend);
       });
       let prev = null;
       this.eq.forEach((b) => { if (prev) prev.connect(b); prev = b; });
       this.decks.forEach((d) => d.gain.connect(this.eq[0]));
+      // DJ effects: a tempo-synced echo, a reverb for washing a song out, and a noise riser for build-ups
+      this.echo = ctx.createDelay(4); this.echo.delayTime.value = 0.5; this.efb = ctx.createGain(); this.efb.gain.value = 0.55;
+      this.etone = ctx.createBiquadFilter(); this.etone.type = 'lowpass'; this.etone.frequency.value = 3200;
+      this.decks.forEach((d) => d.esend.connect(this.echo));
+      this.echo.connect(this.etone); this.etone.connect(this.efb); this.efb.connect(this.echo); this.etone.connect(this.eq[0]);
+      this.verb = ctx.createConvolver(); this.verb.buffer = this._impulse(3.2); this.decks.forEach((d) => d.rsend.connect(this.verb));
+      this.verbOut = ctx.createGain(); this.verbOut.gain.value = 0.9; this.verb.connect(this.verbOut); this.verbOut.connect(this.eq[0]);
       prev.connect(this.duck); this.duck.connect(this.master); this.master.connect(this.analyser); this.analyser.connect(ctx.destination);
       this.applyVolume();
       this._tick = setInterval(() => this.emit('tick'), 250);
@@ -167,11 +178,53 @@
       this._xt = setTimeout(() => { from.el.pause(); from.gain.gain.value = 0; this.xfading = false; }, secs * 1000 + 80);
     }
     _cancelXfade() { clearTimeout(this._xt); clearInterval(this._xi); this.mixing = null; this.xfading = false; this._resetFilters(); }
-    _resetFilters() { if (this.direct || !this.ctx) return; const t = this.ctx.currentTime; this.decks.forEach((d) => { d.hp.frequency.cancelScheduledValues(t); d.hp.frequency.setValueAtTime(10, t); d.bass.gain.cancelScheduledValues(t); d.bass.gain.setValueAtTime(0, t); }); }
+    _resetFilters() {
+      clearInterval(this._bi); this._stopRiser();
+      if (this.direct || !this.ctx) return; const t = this.ctx.currentTime;
+      this.decks.forEach((d) => {
+        [[d.hp.frequency, 10], [d.lp.frequency, 20000], [d.bass.gain, 0], [d.esend.gain, 0], [d.rsend.gain, 0]].forEach(([p, v]) => { p.cancelScheduledValues(t); p.setValueAtTime(v, t); });
+      });
+    }
+    _impulse(secs) {
+      const sr = this.ctx.sampleRate, n = Math.floor(sr * secs), b = this.ctx.createBuffer(2, n, sr);
+      for (let c = 0; c < 2; c++) { const ch = b.getChannelData(c); for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * 0.6; }
+      return b;
+    }
+    _stopRiser() { const r = this._riser; if (!r) return; this._riser = null; try { const t = this.ctx.currentTime; r.g.gain.cancelScheduledValues(t); r.g.gain.setValueAtTime(r.g.gain.value, t); r.g.gain.linearRampToValueAtTime(0.0001, t + 0.12); r.src.stop(t + 0.15); } catch { /* */ } }
+
+    // Effects that run on the playing song just BEFORE a DJ cut (secs = real seconds until the cut, beat = one beat):
+    // 'echo' feeds the last beat into a tempo-synced echo, 'brake' slows the record to a stop like a turntable,
+    // 'riser' builds a noise sweep while the song is filtered thinner and thinner.
+    preFx(kind, secs, beat = 0.5) {
+      this.init(); const d = this.deck;
+      if (kind === 'brake') {
+        clearInterval(this._bi); const r0 = d.el.playbackRate || 1, t0 = performance.now(); d.el.preservesPitch = false;
+        this._bi = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / (secs * 1000)); d.el.playbackRate = Math.max(0.0625, r0 * (1 - p) ** 1.6); if (p >= 1) clearInterval(this._bi); }, 16);
+        return;
+      }
+      if (this.direct || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      if (kind === 'echo') {
+        this.echo.delayTime.setValueAtTime(A.clamp(beat * 0.75, 0.12, 1.5), t); this.efb.gain.setValueAtTime(0.58, t);
+        d.esend.gain.cancelScheduledValues(t); d.esend.gain.setValueAtTime(0.0001, t); d.esend.gain.linearRampToValueAtTime(0.9, t + Math.max(0.05, secs * 0.6));
+      } else if (kind === 'riser') {
+        this._stopRiser();
+        const sr = this.ctx.sampleRate, n = Math.floor(sr * (secs + 0.5)), b = this.ctx.createBuffer(1, n, sr), ch = b.getChannelData(0);
+        for (let i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource(); src.buffer = b; const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.5; const g = this.ctx.createGain();
+        src.connect(f); f.connect(g); g.connect(this.eq[0]);
+        f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(9000, t + secs);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + secs);
+        src.start(t); this._riser = { src, g };
+        d.hp.frequency.cancelScheduledValues(t); d.hp.frequency.setValueAtTime(10, t); d.hp.frequency.exponentialRampToValueAtTime(700, t + secs);
+      }
+    }
 
     // DJ mix: start the next track on the idle deck at startAt, tempo-matched (rate), and blend over `blend` seconds.
     // style 'swap': both basslines never play at once (incoming bass is cut, then swapped halfway).
     // style 'cut': no tempo match possible, so the outgoing track gets a high-pass sweep and drops out on the beat.
+    // style 'filter': long low-pass / high-pass blend. 'wash': the old song dissolves into reverb.
+    // styles 'echo', 'brake', 'riser', 'slam': an instant cut on the downbeat after preFx() has done its build-up.
     async mixTo(track, urlP, { startAt = 0, blend = 8, rate = 1, style = 'swap' } = {}) {
       this.init(); await this.resume();
       if (this.xfading) this._cancelXfade();
@@ -182,22 +235,45 @@
       to.el.playbackRate = rate; to.el.preservesPitch = true;
       const nTo = this.normalize ? to.norm : 1, nFrom = this.normalize ? from.norm : 1;
       this.mixing = { from, to, t0: performance.now(), blend, style };
+      const hard = HARD.has(style);
       if (this.direct) {
         to.level = 0; this._applyDirect(to); try { await to.el.play(); } catch { /* */ }
         this.cur = 1 - this.cur; this.emit('meta'); this.emit('state');
-        const t0 = performance.now(); clearInterval(this._xi);
+        const t0 = performance.now(); clearInterval(this._xi); if (hard) blend = 0.12;
         this._xi = setInterval(() => {
           const p = Math.min(1, (performance.now() - t0) / (blend * 1000));
-          to.level = style === 'cut' ? Math.min(1, p * 4) : Math.min(1, p * 2); from.level = style === 'cut' ? 1 - Math.min(1, p * 1.5) : p < 0.5 ? 1 : 1 - (p - 0.5) * 2;
+          to.level = hard ? 1 : style === 'cut' ? Math.min(1, p * 4) : Math.min(1, p * 2); from.level = hard ? 1 - p : style === 'cut' ? 1 - Math.min(1, p * 1.5) : p < 0.5 ? 1 : 1 - (p - 0.5) * 2;
           this._applyDirect(to); this._applyDirect(from);
-          if (p >= 1) { clearInterval(this._xi); from.el.pause(); from.level = 0; this._applyDirect(from); this.xfading = false; this.mixing = null; }
+          if (p >= 1) { clearInterval(this._xi); clearInterval(this._bi); from.el.pause(); from.el.playbackRate = this.rate; from.el.preservesPitch = true; from.level = 0; this._applyDirect(from); this.xfading = false; this.mixing = null; }
         }, 40);
         return;
       }
       const t = this.ctx.currentTime, half = t + blend / 2, end = t + blend, g = (d) => d.gain.gain;
       [to, from].forEach((d) => { g(d).cancelScheduledValues(t); d.hp.frequency.cancelScheduledValues(t); d.bass.gain.cancelScheduledValues(t); });
-      g(to).setValueAtTime(0.0001, t); d0(to.hp.frequency, 10, t); d0(from.hp.frequency, 10, t); d0(from.bass.gain, 0, t);
-      if (style === 'cut') {
+      [to.lp.frequency, to.esend.gain, to.rsend.gain].forEach((p) => p.cancelScheduledValues(t));
+      g(to).setValueAtTime(0.0001, t); d0(to.hp.frequency, 10, t); d0(to.lp.frequency, 20000, t); d0(to.esend.gain, 0, t); d0(to.rsend.gain, 0, t);
+      if (!hard) { d0(from.hp.frequency, 10, t); from.lp.frequency.cancelScheduledValues(t); d0(from.lp.frequency, 20000, t); }
+      d0(from.bass.gain, 0, t);
+      if (hard) {
+        // the cut itself: the new song lands on the beat at full level; whatever effect was building on the old one
+        // (echo tail, brake, riser) is what you hear carry over it for a moment
+        blend = Math.max(blend, 0.3); d0(to.bass.gain, 0, t); g(to).linearRampToValueAtTime(nTo, t + 0.012);
+        g(from).setValueAtTime(g(from).value || nFrom, t); g(from).linearRampToValueAtTime(0.0001, t + 0.03);
+        from.esend.gain.setValueAtTime(from.esend.gain.value, t + 0.03); from.esend.gain.linearRampToValueAtTime(0.0001, t + 0.06);
+        if (this._riser) { const r = this._riser; this._riser = null; r.g.gain.cancelScheduledValues(t); r.g.gain.setValueAtTime(r.g.gain.value, t); r.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9); r.src.stop(t + 1); }
+      } else if (style === 'filter') {
+        // smooth late-night blend: the old song closes up under a low-pass while the new one opens up from thin to full
+        to.hp.frequency.setValueAtTime(900, t); to.hp.frequency.exponentialRampToValueAtTime(10, t + blend * 0.8); to.bass.gain.setValueAtTime(-20, t); to.bass.gain.linearRampToValueAtTime(0, t + blend * 0.75);
+        g(to).linearRampToValueAtTime(nTo, t + blend * 0.55);
+        g(from).setValueAtTime(nFrom, t); from.lp.frequency.setValueAtTime(20000, t); from.lp.frequency.exponentialRampToValueAtTime(260, t + blend * 0.9);
+        g(from).setValueAtTime(nFrom, t + blend * 0.45); g(from).linearRampToValueAtTime(0.0001, end);
+      } else if (style === 'wash') {
+        // dreamy hand-over: the old song dissolves into reverb as the new one fades up underneath
+        from.rsend.gain.setValueAtTime(0.0001, t); from.rsend.gain.linearRampToValueAtTime(0.85, t + blend * 0.5); from.rsend.gain.linearRampToValueAtTime(0.0001, end);
+        g(from).setValueAtTime(nFrom, t); g(from).linearRampToValueAtTime(0.0001, t + blend * 0.7);
+        from.lp.frequency.setValueAtTime(20000, t); from.lp.frequency.exponentialRampToValueAtTime(1800, t + blend * 0.7);
+        g(to).setValueAtTime(0.0001, t + blend * 0.2); g(to).linearRampToValueAtTime(nTo, end);
+      } else if (style === 'cut') {
         d0(to.bass.gain, 0, t); g(to).linearRampToValueAtTime(nTo, t + Math.min(0.6, blend / 3));
         g(from).setValueAtTime(nFrom, t); from.hp.frequency.exponentialRampToValueAtTime(900, t + blend * 0.7); g(from).linearRampToValueAtTime(0.0001, end);
       } else {
@@ -211,7 +287,11 @@
       try { await to.el.play(); } catch { /* */ }
       this.cur = 1 - this.cur; this.emit('meta'); this.emit('state');
       clearTimeout(this._xt);
-      this._xt = setTimeout(() => { from.el.pause(); from.gain.gain.value = 0; from.hp.frequency.value = 10; from.bass.gain.value = 0; this.xfading = false; this.mixing = null; }, blend * 1000 + 120);
+      this._xt = setTimeout(() => {
+        from.el.pause(); clearInterval(this._bi); from.el.playbackRate = this.rate; from.el.preservesPitch = true; from.gain.gain.value = 0;
+        [[from.hp.frequency, 10], [from.lp.frequency, 20000], [from.bass.gain, 0], [from.esend.gain, 0], [from.rsend.gain, 0]].forEach(([p, v]) => { p.cancelScheduledValues(0); p.value = v; });
+        this.xfading = false; this.mixing = null;
+      }, blend * 1000 + 120);
     }
     setDeckRate(d, r) { d.el.playbackRate = r; d.el.preservesPitch = true; }
 
@@ -245,5 +325,6 @@
     }
   }
   function d0(param, v, t) { param.setValueAtTime(v, t); }
+  const HARD = new Set(['echo', 'brake', 'riser', 'slam']);
   A.engine = new Engine();
 })(window.A);

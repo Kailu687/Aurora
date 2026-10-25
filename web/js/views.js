@@ -184,8 +184,9 @@
       <div class="sec"><h2>${topG.length ? '4' : '3'} · Your DJ</h2></div>
       <div class="panel"><div class="set-row"><div>Style<small>Changes the personality &amp; voice delivery</small></div><div class="seg">${Object.entries(A.DJ_STYLES).map(([k, v]) => `<button class="${dsel.style === k ? 'on' : ''}" data-a="dj-style" data-id="${k}">${v.label} · ${v.dj}</button>`).join('')}</div></div>
       <div class="set-row"><div>Mixing<small>${esc(A.MIX_MODES[A.mixer.mode()].tag)}</small></div><div class="seg">${Object.entries(A.MIX_MODES).map(([k, m]) => `<button class="${A.mixer.mode() === k ? 'on' : ''}" data-a="dj-mix" data-id="${k}">${esc(m.name)}</button>`).join('')}</div></div>
-      <div class="set-row"><div>Talk time<small>How often the DJ speaks between songs</small></div><div class="seg">${[['always', 'Every song'], ['often', 'Often'], ['rare', 'Rarely'], ['off', 'Music only']].map(([k, l]) => `<button class="${dsel.talk === k ? 'on' : ''}" data-a="dj-talk" data-id="${k}">${l}</button>`).join('')}</div></div></div>
-      ${note()}${A.speech.ok ? '' : `<div class="banner"><span>Your browser has no speech synthesis, so the DJ will show captions instead of talking.</span></div>`}</div>`;
+      <div class="set-row"><div>Talk time<small>How often the DJ speaks between songs</small></div><div class="seg">${[['always', 'Every song'], ['often', 'Often'], ['rare', 'Rarely'], ['off', 'Music only']].map(([k, l]) => `<button class="${dsel.talk === k ? 'on' : ''}" data-a="dj-talk" data-id="${k}">${l}</button>`).join('')}</div></div>${A.voice ? A.voice.rowHTML() : ''}</div>
+      ${note()}${A.speech.ok || (A.voice && A.voice.supported()) ? '' : `<div class="banner"><span>Your browser has no speech synthesis, so the DJ will show captions instead of talking.</span></div>`}</div>`;
+    if (A.voice) A.voice.mount(el);
   };
 
   // ---------- stats ----------
@@ -234,7 +235,8 @@
       <div class="panel"><h3>AI DJ</h3>
         <div class="set-row"><div>Enable AI DJ<small>Turn the whole DJ feature on or off. Off hides it everywhere and stops background analysis.</small></div>${sw('djEnabled', A.djEnabled())}</div>
         <div class="set-row"><div>DJ voice<small>Spoken intros between songs</small></div>${sw('djVoiceOn', A.store.get('djVoiceOn', true))}</div>
-        <div class="set-row"><div>Voice<small>${A.isNative ? 'Uses your phone’s text-to-speech voice' : `Uses your system’s voices${voices.length ? '' : ' (none found)'}`}</small></div><div class="ctl">${A.isNative ? '' : `<select data-set="djVoice" style="max-width:240px"><option value="">Auto (best available)</option>${voices.map((v) => `<option value="${esc(v.name)}"${v.name === A.store.get('djVoice', '') ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select>`}<button class="btn ghost sm" data-a="test-voice">Test</button></div></div>
+        ${A.voice ? A.voice.rowHTML() : ''}
+        <div class="set-row"><div>${A.voice && A.voice.wanted() ? 'Backup voice' : 'Voice'}<small>${A.isNative ? 'Uses your phone’s text-to-speech voice' : `Uses your system’s voices${voices.length ? '' : ' (none found)'}`}${A.voice && A.voice.wanted() ? ', only while the studio voice is starting' : ''}</small></div><div class="ctl">${A.isNative ? '' : `<select data-set="djVoice" style="max-width:240px"><option value="">Auto (best available)</option>${voices.map((v) => `<option value="${esc(v.name)}"${v.name === A.store.get('djVoice', '') ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select>`}<button class="btn ghost sm" data-a="test-voice">Test</button></div></div>
         <div class="set-row"><div>Vibe analysis<small>${left ? `Analyzing… ${L.tracks.length - left}/${L.tracks.length}` : 'All songs analyzed'} · reads energy &amp; tempo locally</small></div><div class="ctl">${left ? '' : '<button class="btn ghost sm" data-a="reanalyze">Redo</button>'}${sw('analyze', st.enabled)}</div></div>
         <div class="set-row"><div>Smarter DJ lines (optional)<small>Paste an Anthropic API key so Claude writes the DJ’s patter and understands any request you type. Only song titles, artists and genres are sent. Stored on this device only${A.isDesktop ? ', encrypted with your Windows account' : ''}.</small></div><div class="ctl"><input type="password" class="field" id="ai-key" placeholder="sk-ant-…" value="" style="width:200px" autocomplete="off"></div></div></div>
       <div class="panel"><h3>Appearance</h3>
@@ -244,7 +246,7 @@
         <div class="set-row"><div>Animated background</div>${sw('bgAnim', A.store.get('bgAnim', true))}</div></div>
       ${A.isNative ? `<div class="panel"><h3>Notification player</h3><div class="set-row"><div>Playback controls<small id="nt-status">Checking…</small></div><div class="ctl"><button class="btn ghost sm" data-a="nt-perm">Allow</button><button class="btn ghost sm" data-a="nt-settings">Open settings</button></div></div><p class="faint" style="font-size:13px;margin:6px 0 0">Shows the player in the notification bar, on the lock screen and in Samsung’s media panel while a song plays.</p></div>` : ''}
       <div class="panel"><h3>Updates</h3>
-        <div class="set-row"><div>Version<small id="up-status">${esc(A.updater.status || `Aurora v${A.VERSION.name} (build ${A.VERSION.build})`)}</small></div><div class="ctl"><button class="btn ghost sm" data-a="whats-new">What’s new</button><button class="btn ghost sm" data-a="check-update">Check now</button></div></div>
+        <div class="set-row"><div>Version<small id="up-status">${esc(A.updater.status || `Aurora v${A.VERSION.name} (build ${A.VERSION.build})`)}</small></div><div class="ctl"><button class="btn ghost sm" data-a="whats-new">What’s new</button><button class="btn ghost sm" data-a="check-update">Check now</button></div></div>${A.updater.native ? `<div class="set-row"><div>New ${A.updater.native.os === 'android' ? 'Android app' : 'Windows app'} v${esc(A.updater.native.version)}<small>${A.updater.native.needed ? 'Needed for some features in this version' : 'Optional: everything already updates inside the app'}</small></div><a class="btn ghost sm" href="${esc(A.updater.native.url)}" target="_blank" rel="noopener">${A.updater.native.os === 'android' ? 'Download' : 'Get it'}</a></div>` : ''}
         ${A.updater.native ? `<div class="set-row"><div>New ${A.updater.native.os === 'android' ? 'Android' : 'Windows'} app available<small>v${esc(A.updater.native.version)}. Install it over this one: your music, playlists and settings stay.</small></div><a class="btn accent sm" href="${esc(A.updater.native.url)}" target="_blank" rel="noopener">Get it</a></div>` : ''}
         <div class="set-row"><div>Check automatically<small>Looks for new versions when Aurora opens</small></div>${sw('autoUpdate', A.store.get('autoUpdate', true) !== false)}</div>
         <div class="set-row"><div>Installing updates<small>Updates download quietly and install the next time Aurora starts. Every update is checked against Aurora’s signature first.</small></div><div class="seg">${[['auto', 'Automatic'], ['ask', 'Ask me first']].map(([k, l]) => `<button class="${A.store.get('updateMode', 'auto') === k ? 'on' : ''}" data-a="update-mode" data-id="${k}">${l}</button>`).join('')}</div></div></div>
@@ -275,6 +277,7 @@
       });
     });
     $$('[data-eq]', el).forEach((c) => c.addEventListener('input', () => E.setEQ(+c.dataset.eq, +c.value)));
+    if (A.voice) A.voice.mount(el);
     if (A.isNative) {
       const nt = $('#nt-status', el);
       if (nt) { const s = A.native.status(); nt.textContent = !s ? 'Unavailable' : s.permission && s.enabled ? 'On. Controls appear while music plays.' : 'Off. Tap Allow, or open settings and switch notifications on for Aurora.'; }

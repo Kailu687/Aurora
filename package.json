@@ -20,6 +20,7 @@
     "android": "powershell -ExecutionPolicy Bypass -File tools/build-android.ps1",
     "windows": "electron-builder --win nsis",
     "hash": "node tools/hash-releases.js",
+    "try-voice": "electron tools/try-voice.js",
     "release": "powershell -ExecutionPolicy Bypass -File tools/build-all.ps1"
   },
   "devDependencies": {
@@ -40,6 +41,7 @@
     "files": [
       "electron/**/*",
       "web/**/*",
+      "voice/**/*",
       "package.json"
     ],
     "asar": true,
