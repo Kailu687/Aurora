@@ -1,30 +1,45 @@
 [
-  {
-    "version": "1.6.2",
-    "date": "2026-10-19",
-    "notes": [
-      "Artists are now split properly: 'A.R. Rahman;Aaryan' lists under A.R. Rahman and Aaryan instead of making a separate artist",
-      "Download button for the Android app now comes straight from the website"
-    ]
-  },
-  {
-    "version": "1.6.1",
-    "date": "2026-10-19",
-    "notes": [
-      "Update checks use your own domain with an automatic fallback",
-      "The website pages (home and downloads) are now published"
-    ]
-  },
-  {
-    "version": "1.6.0",
-    "date": "2026-10-19",
-    "notes": [
-      "Plays straight from your music folder on Android and Windows: nothing is copied or imported, and songs appear instantly",
-      "Android: notification-bar, lock-screen and Samsung media-panel player with cover art, plus background playback",
-      "Album covers from the song files, from a cover.jpg in the folder, or found online once and saved on the device",
-      "AI DJ with 12 vibes, spoken intros, live requests and nudges, and an on/off switch in Settings",
-      "Closing Aurora from the Android app switcher fully stops the music and the app",
-      "Resume where you left off, Reset to defaults, and over-the-air updates that ask before installing"
-    ]
-  }
+ {
+  "version": "1.7.0",
+  "date": "2026-10-25",
+  "notes": [
+   "Real DJ mixing: the AI DJ now matches tempos, locks the beats together and blends on phrase boundaries, with a Best parts mode that plays the strongest section of each song",
+   "Flow Architect: build a journey from one mood to another (calm to nostalgic to euphoric) for 20 minutes to 2 hours, preview it, drag to reorder",
+   "Just press play and Perfect Next Song: Aurora keeps the music going with songs that fit (Familiar, Surprise me or Somewhere new) and learns from skips",
+   "Lyrics: smooth line highlighting, full-screen lyrics, saved favourite lines, and Find lyrics from the free LRCLIB library",
+   "Immersive Now Playing with visuals that follow the music (Aurora, Ambient, Bloom), colours from the album cover and a zen mode",
+   "Mini player that floats over other windows, plus keyboard shortcuts you can change and global shortcuts on Windows",
+   "Smart playlists, DJ journeys, your listening Recap, On This Day and Forgotten Favourites",
+   "Your data is safe across updates: automatic backups before every update, merge-only restore, and a safety net that rolls back an update that fails to start",
+   "Signed updates: every update is checked against Aurora's signature before it installs"
+  ]
+ },
+ {
+  "version": "1.6.2",
+  "date": "2026-10-19",
+  "notes": [
+   "Artists are now split properly: 'A.R. Rahman;Aaryan' lists under A.R. Rahman and Aaryan instead of making a separate artist",
+   "Download button for the Android app now comes straight from the website"
+  ]
+ },
+ {
+  "version": "1.6.1",
+  "date": "2026-10-19",
+  "notes": [
+   "Update checks use your own domain with an automatic fallback",
+   "The website pages (home and downloads) are now published"
+  ]
+ },
+ {
+  "version": "1.6.0",
+  "date": "2026-10-19",
+  "notes": [
+   "Plays straight from your music folder on Android and Windows: nothing is copied or imported, and songs appear instantly",
+   "Android: notification-bar, lock-screen and Samsung media-panel player with cover art, plus background playback",
+   "Album covers from the song files, from a cover.jpg in the folder, or found online once and saved on the device",
+   "AI DJ with 12 vibes, spoken intros, live requests and nudges, and an on/off switch in Settings",
+   "Closing Aurora from the Android app switcher fully stops the music and the app",
+   "Resume where you left off, Reset to defaults, and over-the-air updates that ask before installing"
+  ]
+ }
 ]

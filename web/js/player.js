@@ -85,9 +85,8 @@
       if (this.userQueue.length) id = this.userQueue.shift();
       else if (this.pos + 1 < this.order.length) { this.pos++; id = this.order[this.pos]; }
       else if (this.repeat === 'all' && this.order.length && this.context.type !== 'dj') { this.pos = 0; id = this.order[0]; if (this.shuffle) this.order = A.shuffle(this.order); }
-      else if (this.autoplay && this.current && this.context.type !== 'dj' && A.similar) {
-        const more = A.similar(this.current, 25).map((t) => t.id);
-        if (more.length) { this.context = { type: 'radio', id: this.current.id, name: `${this.current.title} Radio` }; this.order.push(...more); this.pos++; id = this.order[this.pos]; A.toast('Autoplay: more like ' + this.current.title); }
+      else if (this.autoplay && this.current && this.context.type !== 'dj' && A.flow) {
+        A.flow.refreshTail(); if (this.pos + 1 < this.order.length) { this.pos++; id = this.order[this.pos]; }
       }
       if (id == null) { E.pause(); this.emit('state'); return; }
       this.emit('queue');

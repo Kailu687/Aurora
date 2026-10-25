@@ -10,7 +10,7 @@
     set('tb-back', 'left'); set('tb-fwd', 'right'); set('tb-search-ic', 'search'); set('tb-settings', 'gear'); set('side-close', 'x');
     set('pb-prev', 'prev'); set('pb-next', 'next'); set('pb-lyrics', 'mic'); set('pb-queue', 'queue'); set('pb-sound', 'sliders'); set('pb-expand', 'expand');
     set('np-close', 'down'); set('np-like', 'heart'); set('np-more', 'more'); set('np-prev', 'prev'); set('np-next', 'next'); set('np-t-lyrics', 'mic'); set('np-t-sound', 'sliders'); set('np-t-queue', 'queue'); set('drop-ic', 'upload');
-    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], stats: ['chart', 'Stats'] };
+    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], stats: ['chart', 'Stats'] };
     $$('#nav a').forEach((a) => { const [i, l] = labels[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
     const short = { home: ['home', 'Home'], search: ['search', 'Search'], dj: ['spark', 'DJ'], library: ['library', 'Library'] };
     $$('#mobilenav a').forEach((a) => { const [i, l] = short[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
@@ -111,7 +111,7 @@
   // ---------- queue / lyrics / DJ panels ----------
   const trk = (id) => L.byId.get(id);
   function qItem(t, kind, idx, now) {
-    return `<div class="q-item${now ? ' now' : ''}" draggable="${now ? 'false' : 'true'}" data-qk="${kind}" data-qi="${idx}" data-tid="${t.id}">${U.cover(t)}<div class="m"><b class="ellip">${esc(t.title)}</b><small class="ellip">${esc(t.artist)}</small></div>${now ? '' : `<button class="icon-btn sm" data-a="q-remove" aria-label="Remove">${icon('x')}</button>`}</div>`;
+    return `<div class="q-item${now ? ' now' : ''}" draggable="${now ? 'false' : 'true'}" data-qk="${kind}" data-qi="${idx}" data-tid="${t.id}">${U.cover(t)}<div class="m"><b class="ellip">${esc(t.title)}</b><small class="ellip">${esc(t.artist)}</small>${!now && A.flow && A.flow.reasons.has(t.id) ? `<small class="ellip q-why">${icon('spark')} ${esc(A.flow.reasons.get(t.id))}</small>` : ''}</div>${now ? '' : `<button class="icon-btn sm" data-a="q-remove" aria-label="Remove">${icon('x')}</button>`}</div>`;
   }
   function renderQueue(host) {
     const cur = P.current; if (!cur) { host.innerHTML = `<div class="no-lyrics">${icon('queue')}<div>Your queue is empty.<br>Play something to get started.</div></div>`; return; }
@@ -119,7 +119,8 @@
     host.innerHTML = `<div class="q-sec">Now playing</div>${qItem(cur, 'now', 0, true)}
       ${uq.length ? `<div class="q-sec"><span>Next in queue</span><button class="muted" data-a="q-clear-user">Clear</button></div>${uq.map((t, i) => qItem(t, 'user', i)).join('')}` : ''}
       ${up.length ? `<div class="q-sec"><span>Next from ${esc(P.context.name || 'library')}</span></div>${up.map((t, i) => qItem(t, 'ctx', i)).join('')}` : ''}
-      ${!uq.length && !up.length ? `<div class="no-lyrics"><div>That’s the end of the queue.${P.autoplay ? '<br>Autoplay will keep the music going.' : ''}</div></div>` : ''}`;
+      ${!uq.length && !up.length ? `<div class="no-lyrics"><div>That’s the end of the queue.</div></div>` : ''}
+      ${P.context.type !== 'dj' && A.flow ? `<div class="q-sec"><span>When the queue runs out</span></div><div class="q-cont">${A.flow.modeChips('seg sm')}<button class="chip${P.autoplay ? '' : ' on'}" data-a="cont-mode" data-id="off">Stop</button></div>` : ''}`;
   }
   async function loadLyrics() {
     const t = P.current; if (!t) { ls.lyr = null; return; }
@@ -130,17 +131,18 @@
   function renderLyrics(host) {
     const l = ls.lyr; if (!P.current) { host.innerHTML = `<div class="no-lyrics">${icon('mic')}<div>Play a song to see lyrics.</div></div>`; return; }
     if (!l || l.data === undefined) { host.innerHTML = '<div class="no-lyrics muted">Looking for lyrics…</div>'; return; }
-    if (!l.data) { host.innerHTML = `<div class="no-lyrics">${icon('mic')}<div><b>No lyrics for this song</b><br><span style="font-size:13px">Put a .lrc file next to the song, or paste lyrics yourself.</span></div><button class="btn ghost sm" data-a="edit-current">${icon('edit')} Add lyrics</button></div>`; return; }
-    host.innerHTML = `<div class="lyrics${l.data.synced ? '' : ' plain'}">${l.data.lines.map((x, i) => `<p data-i="${i}" ${x.t >= 0 ? `data-t="${x.t}"` : ''}>${esc(x.s)}</p>`).join('')}</div>`;
-    l.idx = -1;
+    host.innerHTML = A.lyr.html(l, P.current); l.idx = -1;
+    // nothing on the device: look it up on the free lyrics library once (can be turned off in Settings)
+    const t = P.current;
+    if (l.data === null && !l.tried && A.lyr.auto() && navigator.onLine !== false && !A.lyr.missedRecently(t)) {
+      l.tried = true; A.lyr.find(t).then((r) => { if (r && P.current && P.current.id === t.id) loadLyrics(); else { renderSide(); renderNpPanel(); } }).catch(() => { renderSide(); renderNpPanel(); });
+      host.innerHTML = A.lyr.html(l, t);
+    }
   }
-  function syncLyrics(t) {
-    const l = ls.lyr; if (!l || !l.data || !l.data.synced) return;
-    const vis = $$('.lyrics:not(.plain)'); if (!vis.length) return;
-    const lines = l.data.lines; let i = -1; for (let k = 0; k < lines.length; k++) { if (lines[k].t <= t + 0.25) i = k; else break; }
-    if (i === l.idx) return; l.idx = i;
-    vis.forEach((box) => { const ps = box.children; for (let k = 0; k < ps.length; k++) { ps[k].classList.toggle('on', k === i); ps[k].classList.toggle('past', k < i); } if (ps[i]) { const sc = box.closest('#side-body, .np-panel'); if (sc && sc.offsetParent) sc.scrollTo({ top: ps[i].offsetTop - sc.clientHeight * 0.32, behavior: 'smooth' }); } });
-  }
+  function syncLyrics(t) { A.lyr.sync(ls.lyr, t); }
+  A.lyr.state = () => ls.lyr;
+  A.lyr.onChange = (reload) => { if (reload) loadLyrics(); else { renderSide(); renderNpPanel(); } };
+  A.lyr.showTab = () => { ls.npTab = 'lyrics'; renderNpPanel(); };
   function renderDJPanel(host) {
     const dj = A.dj;
     if (dj.active) {
@@ -175,9 +177,10 @@
     $('#pb-lyrics').classList.toggle('on', tab === 'lyrics'); $('#pb-queue').classList.toggle('on', tab === 'queue');
   }
   let npPushed = false;
+  A.openNp = (o, nb) => openNp(o, nb);
   function openNp(open = true, noBack = false) {
     const was = els.np.classList.contains('open');
-    els.np.classList.toggle('open', open); els.np.setAttribute('aria-hidden', !open); document.body.classList.toggle('np-open', open);
+    els.np.classList.toggle('open', open); els.np.setAttribute('aria-hidden', !open); document.body.classList.toggle('np-open', open); if (!open) document.body.classList.remove('lyr-full', 'np-zen');
     if (open) { if (!P.current) { els.np.classList.remove('open'); document.body.classList.remove('np-open'); return; } renderNpPanel(); }
     // browsers/PWA: make the phone's back gesture close the player instead of leaving the app
     if (!A.isNative) {
@@ -344,6 +347,7 @@
       else if (k === 'autoUpdate') A.store.set('autoUpdate', on);
       else if (k === 'onlineCovers') { A.store.set('onlineCovers', on); if (on) { L.tracks.forEach((t) => { t.coverTried = 0; }); L.fetchCovers(); } }
       else if (k === 'analyze') A.analysis.setEnabled(on); else if (k === 'bgAnim') { A.store.set('bgAnim', on); document.body.classList.toggle('calm', !on); }
+      else if (['immersive', 'zen', 'autoLyrics'].includes(k)) A.store.set(k, on);
     },
     'eq-preset': (el) => { E.setEQAll(A.EQ_PRESETS[el.dataset.id]); $$('[data-eq]').forEach((i) => (i.value = E.eqGains[+i.dataset.eq])); },
     'set-theme': (el) => { A.setTheme(el.dataset.id); A.render(true); },
@@ -408,7 +412,7 @@
         if (P.current && P.current.id === t.id && row.classList.contains('playing')) { P.toggle(); return; }
         const c = ctxFrom(row); if (c) P.playContext(c.ids, t.id, c.meta); else P.playTrackNow(t);
       }
-      const ly = e.target.closest('.lyrics:not(.plain) p[data-t]'); if (ly) E.seek(+ly.dataset.t);
+      const ly = e.target.closest('.lyrics.synced p[data-t]'); if (ly) E.seek(Math.max(0, +ly.dataset.t + A.lyr.offset(P.current)));
     });
     document.addEventListener('submit', (e) => { const f = e.target.closest('[data-a-submit]'); if (f) { e.preventDefault(); SUBMIT[f.dataset.aSubmit](f); } });
     document.addEventListener('contextmenu', (e) => { const r = e.target.closest('.row[data-tid], .q-item[data-tid]'); if (r) { e.preventDefault(); const t = trk(r.dataset.tid); const pl = A.route.name === 'playlist' ? L.playlists.find((p) => p.id === A.route.arg) : null; t && U.trackMenu(e, t, { playlist: pl }); } });
@@ -441,25 +445,17 @@
     // keyboard
     document.addEventListener('keydown', (e) => {
       const tag = (e.target.tagName || '').toLowerCase(); const typing = ['input', 'textarea', 'select'].includes(tag) && e.target.type !== 'range';
-      if (e.key === 'Escape') { if (els.np.classList.contains('open')) openNp(false); else if ($('#app').classList.contains('side-open')) ACT['close-side'](); U.closeMenu(); return; }
+      if (e.key === 'Escape') { if (document.body.classList.contains('lyr-full')) { document.body.classList.remove('lyr-full'); return; } if (els.np.classList.contains('open')) openNp(false); else if ($('#app').classList.contains('side-open')) ACT['close-side'](); U.closeMenu(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#q').focus(); return; }
-      if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
-      const k = e.key;
-      if (k === ' ') { e.preventDefault(); P.toggle(); }
-      else if (k === 'ArrowRight') { e.preventDefault(); e.shiftKey ? P.next() : E.seek(E.time + 5); }
-      else if (k === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? P.prev() : E.seek(E.time - 5); }
-      else if (k === 'ArrowUp') { e.preventDefault(); E.setVolume(E.volume + 0.05); } else if (k === 'ArrowDown') { e.preventDefault(); E.setVolume(E.volume - 0.05); }
-      else if (/^m$/i.test(k)) E.toggleMute(); else if (/^l$/i.test(k)) ACT['like-current']();
-      else if (/^s$/i.test(k)) P.toggleShuffle(); else if (/^r$/i.test(k)) P.cycleRepeat();
-      else if (/^q$/i.test(k)) openSide('queue'); else if (/^y$/i.test(k)) openSide('lyrics');
-      else if (/^f$/i.test(k)) openNp(!els.np.classList.contains('open')); else if (/^d$/i.test(k) && A.djEnabled()) location.hash = '#/dj';
-      else if (k === '/') { e.preventDefault(); $('#q').focus(); }
+      if (typing || e.metaKey) return;
+      if (A.anywhere) A.anywhere.handle(e);
     });
   }
 
   // ---------- boot ----------
   async function boot() {
     if (await A.updater.bootApply()) return; // an update downloaded last time: installed, page reloads
+    if (document.readyState === 'loading') await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true })); // every script has run
     document.body.classList.toggle('electron', A.isDesktop);
     document.documentElement.style.setProperty('--blur', A.store.get('blur', 26) + 'px');
     document.body.classList.toggle('calm', A.store.get('bgAnim', true) === false);

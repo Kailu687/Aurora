@@ -91,7 +91,7 @@
     const topArtists = d.artists.slice().sort((a, b) => b.tracks.length - a.tracks.length).slice(0, 12);
     const albums = d.albums.slice().sort((a, b) => a.name.localeCompare(b.name)).slice(0, 14);
     const vibeCards = A.VIBES.map((v) => `<button class="card" data-a="dj-start" data-id="${v.id}" style="padding:0"><div class="cover" style="background:linear-gradient(135deg,${v.g[0]},${v.g[1]})"><div style="position:absolute;inset:0;padding:14px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;font-weight:800;font-size:20px;letter-spacing:-.02em">${esc(v.name)}<small style="font-weight:500;font-size:12px;opacity:.9;margin:2px 0 0">${esc(v.tag)}</small></div></div></button>`);
-    el.innerHTML = `<div class="page"><h1>${greet}</h1><div class="tiles">${tiles.join('')}</div>${A.feat.memoryCard()}
+    el.innerHTML = `<div class="page"><h1>${greet}</h1>${A.flow ? A.flow.homeHTML() : ''}<div class="tiles">${tiles.join('')}</div>${A.feat.memoryCard()}
       ${A.djEnabled() ? shelf('Spin up the AI DJ', vibeCards, '#/dj') : ''}
       ${shelf('Made for you', mixes().map((m, i) => `<a class="card" href="#/mix/${m.id}"><div class="cover-wrap">${mixCover(m, i)}<button class="go" data-a="play-ctx" data-kind="mix" data-id="${m.id}">${icon('play')}</button></div><b class="ellip">${esc(m.name)}</b><small>${esc(m.sub)}</small></a>`))}
       ${shelf('Recently played', recent.slice(0, 14).map((t) => trackCard(t, rk)), '#/recent')}
@@ -124,7 +124,7 @@
     const tabs = ['playlists', 'albums', 'artists', 'genres', 'songs'];
     let body = '';
     if (tab === 'playlists') {
-      body = `<div class="grid"><a class="card" href="#/liked"><div class="cover-wrap"><div class="cover ph" style="background:linear-gradient(135deg,#5b3cff,#b57dff)">${icon('heart')}</div><button class="go" data-a="play-ctx" data-kind="liked" data-id="liked">${icon('play')}</button></div><b>Liked Songs</b><small>${L.liked().length} songs</small></a>${L.playlists.map(plCard).join('')}<button class="card" data-a="new-playlist"><div class="cover ph" style="background:var(--glass2)">${icon('plus')}</div><b>Create playlist</b><small>Make your own mix</small></button><button class="card" data-a="smart-new"><div class="cover ph" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">${icon('zap')}</div><b>Smart playlist</b><small>Fills itself from rules</small></button></div>`;
+      body = `<div class="grid"><a class="card" href="#/liked"><div class="cover-wrap"><div class="cover ph" style="background:linear-gradient(135deg,#5b3cff,#b57dff)">${icon('heart')}</div><button class="go" data-a="play-ctx" data-kind="liked" data-id="liked">${icon('play')}</button></div><b>Liked Songs</b><small>${L.liked().length} songs</small></a><a class="card" href="#/lines"><div class="cover-wrap"><div class="cover ph" style="background:linear-gradient(135deg,#ff6a88,#ff99ac)">${icon('mic')}</div></div><b>Saved lines</b><small>${(A.store.get('savedLines', []) || []).length} lyrics you loved</small></a><a class="card" href="#/flow"><div class="cover-wrap"><div class="cover ph" style="background:linear-gradient(135deg,#74ebd5,#5b3cff)">${icon('route')}</div></div><b>Flow Architect</b><small>Build a journey from mood to mood</small></a>${L.playlists.map(plCard).join('')}<button class="card" data-a="new-playlist"><div class="cover ph" style="background:var(--glass2)">${icon('plus')}</div><b>Create playlist</b><small>Make your own mix</small></button><button class="card" data-a="smart-new"><div class="cover ph" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">${icon('zap')}</div><b>Smart playlist</b><small>Fills itself from rules</small></button></div>`;
     } else if (tab === 'albums') body = d.albums.length ? `<div class="grid">${d.albums.map(albumCard).join('')}</div>` : `<div class="empty">${icon('disc')}<div>No albums found. Albums appear when your files have album tags.</div></div>`;
     else if (tab === 'artists') body = `<div class="grid">${d.artists.map(artistCard).join('')}</div>`;
     else if (tab === 'genres') body = d.genres.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">${d.genres.map((x, i) => { const h = (i * 53 + 10) % 360; return `<a class="genre-tile" href="#/genre/${x.id}" style="background:linear-gradient(135deg,hsl(${h} 75% 52%),hsl(${(h + 40) % 360} 80% 36%))">${esc(x.name)}<small>${x.tracks.length} songs</small></a>`; }).join('')}</div>` : `<div class="empty">${icon('music')}<div>No genre tags found in your files.</div></div>`;
@@ -226,7 +226,7 @@
       <div class="panel"><h3>Playback</h3>
         <div class="set-row"><div>Crossfade<small>Blend the end of a song into the next</small></div><div class="ctl"><span id="cf-v" class="muted">${cf ? cf + 's' : 'Off'}</span><input class="range" type="range" min="0" max="12" step="1" value="${cf}" data-set="crossfade"></div></div>
         <div class="set-row"><div>Normalize volume<small>Evens out loud and quiet songs</small></div>${sw('normalize', E.normalize)}</div>
-        <div class="set-row"><div>Autoplay similar songs<small>Keep playing when your queue runs out</small></div>${sw('autoplay', P.autoplay)}</div>
+        <div class="set-row"><div>Keep the music going<small>${P.autoplay ? esc(A.CONT_MODES[A.flow.contMode()].tag) : 'Stop when the queue runs out'}</small></div><div class="seg">${A.flow.modeChips('seg').replace(/^<div class="seg">|<\/div>$/g, '')}<button class="${P.autoplay ? '' : 'on'}" data-a="cont-mode" data-id="off">Off</button></div></div>
         <div class="set-row"><div>Find missing album covers online<small>Songs without a picture get one from Apple’s public music catalog (only artist and album names are sent) and it’s saved on this device</small></div>${sw('onlineCovers', A.store.get('onlineCovers', true) !== false)}</div>
         <div class="set-row"><div>Playback speed</div><div class="ctl"><select data-set="speed">${[0.75, 0.9, 1, 1.1, 1.25, 1.5, 2].map((s) => `<option value="${s}"${s === E.rate ? ' selected' : ''}>${s}x</option>`).join('')}</select></div></div>
         <div class="set-row"><div>Sleep timer<small>${P.sleep ? (P.sleep.end ? 'Stops after this song' : 'Active') : 'Fade out and stop'}</small></div><div class="ctl"><select data-set="sleep"><option value="">Off</option>${[15, 30, 45, 60, 90].map((m) => `<option value="${m}">${m} min</option>`).join('')}<option value="end">End of song</option></select></div></div></div>
@@ -252,7 +252,13 @@
       <div class="panel"><h3>Your data</h3><p class="muted" style="margin:0 0 10px">Updates never touch your songs, playlists, likes, play counts or history. Aurora also backs them up on this device every day and right before each update${A.isDesktop ? ' (a copy goes to the backups folder in Aurora’s AppData too)' : ''}. Restoring only adds things back, it never deletes.</p>
         <div id="snaps"><p class="faint" style="font-size:13px;margin:0">Loading backups…</p></div>
         <div class="actions" style="padding:12px 0 0"><button class="btn ghost" data-a="snapshot-now">${icon('check')} Back up now</button><button class="btn ghost" data-a="export">${icon('download')} Export to a file</button><button class="btn ghost" data-a="import">${icon('upload')} Import a file</button></div></div>
-      <div class="panel"><h3>Keyboard shortcuts</h3><div class="kbd-grid">${[['Play / pause', 'Space'], ['Next / previous', 'Shift + → / ←'], ['Seek ±5s', '→ / ←'], ['Volume', '↑ / ↓'], ['Mute', 'M'], ['Like', 'L'], ['Shuffle', 'S'], ['Repeat', 'R'], ['Queue', 'Q'], ['Lyrics', 'Y'], ['Now playing', 'F'], ['Search', '/ or Ctrl+K'], ['AI DJ', 'D']].map(([a, b]) => `<div><span>${a}</span><kbd>${b}</kbd></div>`).join('')}</div></div>
+      <div class="panel"><h3>Listening experience</h3>
+        <div class="set-row"><div>Open Now Playing when you press play<small>Albums, playlists, mixes and journeys open the full-screen player</small></div>${sw('immersive', A.store.get('immersive', true))}</div>
+        <div class="set-row"><div>Zen mode<small>Controls fade away while you just listen</small></div>${sw('zen', A.store.get('zen', true))}</div>
+        <div class="set-row"><div>Visuals<small>${esc(A.PULSE_STYLES[A.immersive.style()].tag)}</small></div><div class="seg">${Object.entries(A.PULSE_STYLES).map(([k, v]) => `<button class="${A.immersive.style() === k ? 'on' : ''}" data-a="pulse-set" data-id="${k}">${esc(v.name)}</button>`).join('')}</div></div>
+        <div class="set-row"><div>Find lyrics online<small>When a song has no lyrics, look them up on LRCLIB, a free open lyrics library (only the title, artist, album and length are sent)</small></div>${sw('autoLyrics', A.store.get('autoLyrics', true))}</div>
+        ${A.anywhere.supported() ? `<div class="set-row"><div>Mini player<small>A small player that floats above your other windows</small></div><button class="btn ghost sm" data-a="mini">${icon('pip')} Open</button></div>` : ''}
+        <div class="set-row"><div>Keyboard shortcuts<small>${A.isDesktop ? 'Change them, and set shortcuts that work from any app' : 'See and change them'}</small></div><button class="btn ghost sm" data-a="keys-edit">${icon('kbd')} Edit</button></div></div>
       <p class="faint" style="text-align:center">Aurora ${esc(A.VERSION.name)} · made for local music</p></div>`;
     // direct bindings
     $$('[data-set]', el).forEach((c) => {
@@ -281,6 +287,7 @@
 
   // ---------- router ----------
   const routes = { '': V.home, search: V.search, library: V.library, album: V.album, artist: V.artist, genre: V.genre, mix: V.mix, liked: V.liked, recent: V.recent, playlist: V.playlist, dj: V.dj, stats: V.stats, settings: V.settings };
+  A.routes = routes;
   A.route = { name: 'home', arg: '' };
   A.render = (soft) => {
     const raw = (location.hash || '#/').replace(/^#\/?/, ''); const [name, ...rest] = raw.split('/'); const arg = rest.join('/');

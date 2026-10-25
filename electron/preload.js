@@ -15,5 +15,8 @@ contextBridge.exposeInMainWorld('desktop', {
   relaunch: () => ipcRenderer.invoke('relaunch'),
   // A dropped file or folder: the path only exists because the user dropped it, so it may be played and scanned.
   pathFor: (file) => { const p = webUtils.getPathForFile(file); if (p) ipcRenderer.sendSync('allow-path', p); return p; },
-  onMediaKey: (cb) => ipcRenderer.on('media-key', (_e, k) => cb(k))
+  onMediaKey: (cb) => ipcRenderer.on('media-key', (_e, k) => cb(k)),
+  setMini: (on) => ipcRenderer.invoke('set-mini', !!on),
+  setGlobalKeys: (map) => ipcRenderer.invoke('set-global-keys', map),
+  onGlobalKey: (cb) => ipcRenderer.on('global-key', (_e, a) => cb(a))
 });

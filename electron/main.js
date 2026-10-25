@@ -206,7 +206,39 @@ app.whenReady().then(() => {
   app.on('second-instance', () => { if (win.isMinimized()) win.restore(); win.focus(); });
   // media keys -> renderer
   const send = (k) => { if (!win.isDestroyed()) win.webContents.send('media-key', k); };
-  try { globalShortcut.register('MediaPlayPause', () => send('play')); globalShortcut.register('MediaNextTrack', () => send('next')); globalShortcut.register('MediaPreviousTrack', () => send('prev')); } catch { /* optional */ }
+  const mediaKeys = () => { try { globalShortcut.register('MediaPlayPause', () => send('play')); globalShortcut.register('MediaNextTrack', () => send('next')); globalShortcut.register('MediaPreviousTrack', () => send('prev')); } catch { /* optional */ } };
+  mediaKeys();
+
+  // Global shortcuts the user picked (play/pause, next, mini player...) that work while another app is in front
+  const ACTIONS = new Set(['toggle', 'next', 'prev', 'mini', 'like', 'volUp', 'volDown', 'lyrFull', 'np']);
+  handle('set-global-keys', async (e, map) => {
+    globalShortcut.unregisterAll(); mediaKeys();
+    const failed = [];
+    for (const [a, acc] of Object.entries(map && typeof map === 'object' ? map : {})) {
+      if (!ACTIONS.has(a) || typeof acc !== 'string' || !acc || acc.length > 60 || !/^[A-Za-z0-9+]+$/.test(acc) || acc.split('+').length < 3) continue;
+      try { if (!globalShortcut.register(acc, () => { if (!win.isDestroyed()) win.webContents.send('global-key', a); })) failed.push(acc.replace('CommandOrControl', 'Ctrl')); } catch { failed.push(acc); }
+    }
+    return { failed };
+  });
+
+  // Mini player: the same window shrinks into a small always-on-top player, so playback never stops
+  let full = null;
+  const MINI = { w: 440, h: 150 };
+  handle('set-mini', async (e, on) => {
+    if (win.isDestroyed()) return false;
+    if (on && !full) {
+      full = { bounds: win.getBounds(), max: win.isMaximized() };
+      if (full.max) win.unmaximize();
+      win.setMinimumSize(320, 120); win.setSize(MINI.w, MINI.h); win.setAlwaysOnTop(true, 'floating');
+      const { workArea } = require('electron').screen.getDisplayMatching(win.getBounds()); win.setPosition(workArea.x + workArea.width - MINI.w - 24, workArea.y + workArea.height - MINI.h - 24);
+      try { win.setTitleBarOverlay({ height: 30 }); } catch { /* not on this OS */ }
+    } else if (!on && full) {
+      win.setAlwaysOnTop(false); win.setMinimumSize(380, 560); win.setBounds(full.bounds); if (full.max) win.maximize();
+      try { win.setTitleBarOverlay({ height: 40 }); } catch { /* */ }
+      full = null;
+    }
+    return true;
+  });
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
 app.on('will-quit', () => globalShortcut.unregisterAll());
