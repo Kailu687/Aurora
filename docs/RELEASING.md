@@ -110,3 +110,16 @@ A new APK or installer also contains the latest `web/`, so fresh installs are al
   uninstalled once (its saved data is lost).
 * **Actions fails at "deploy"**: check Settings, Pages, Source = GitHub Actions, and that the repository is public.
 * **Gradle says "Unable to establish loopback connection"**: run `npm run android` from a normal terminal.
+
+## G. The DJ's studio voice
+
+The studio voice (Settings, AI DJ, **Studio voice**) is the free Kokoro-82M neural voice, run on the device.
+
+* The speech engine's JavaScript ships with the app in `web/vendor/kokoro/` (kokoro-js 1.2.1 and transformers.js
+  3.5.1, Apache-2.0). It is part of normal updates.
+* Its one large file, `voice/ort-wasm-simd-threaded.jsep.wasm` (about 21 MB), is NOT part of the update package.
+  `publish-web.js` copies it to `site/app/voice/`, and apps download it only when someone turns the voice on. The
+  SHA-256 pinned in `web/js/voice.js` must match the file, or apps refuse it. If you ever upgrade kokoro-js, replace
+  both the vendored files and this file together and update the pinned hash.
+* The voice model itself (about 90 MB) comes from Hugging Face (`onnx-community/Kokoro-82M-v1.0-ONNX`) on first use
+  and is then kept in the device's cache. No account, key or payment is involved.

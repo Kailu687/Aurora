@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const WEB = path.join(__dirname, '..', 'web');
 const AUDIO = /\.(mp3|m4a|mp4|m4b|aac|wav|flac|ogg|oga|opus|webm|weba)$/i;
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const userFile = (name) => path.join(app.getPath('userData'), name);
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const writeJSON = (f, v) => { const tmp = f + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(v)); fs.renameSync(tmp, f); };
@@ -173,6 +173,11 @@ app.whenReady().then(() => {
       const ok = (AUDIO.test(file) || /\.lrc$/i.test(file)) && path.isAbsolute(file) && isAllowed(file);
       if (!ok) return new Response('Forbidden', { status: 403 });
       return serveFile(file, req.headers.get('range'));
+    }
+    if (p.startsWith('/voice/')) { // the studio voice engine, shipped with the installer (outside web/, so updates never carry it)
+      const vroot = path.join(__dirname, '..', 'voice'), vf = path.normalize(path.join(vroot, p.slice(7)));
+      if (!vf.startsWith(vroot)) return new Response('Forbidden', { status: 403 });
+      try { return new Response(await fs.promises.readFile(vf), { headers: { 'content-type': 'application/wasm' } }); } catch { return new Response('Not found', { status: 404 }); }
     }
     const rel = p === '/' ? 'index.html' : p.replace(/^\/+/, '');
     let root = WEB;

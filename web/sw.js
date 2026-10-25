@@ -1,7 +1,7 @@
 /* Aurora service worker: offline shell + cloud-update cache ('aurora-live'). */
-const BUNDLE_BUILD = 20; // stamped by tools/publish-web.js
+const BUNDLE_BUILD = 21; // stamped by tools/publish-web.js
 const CACHE = 'aurora-v2', LIVE = 'aurora-live', STAGED = 'aurora-staged';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'config.json', 'changelog.json', 'css/style.css', 'js/version.js', 'js/util.js', 'js/db.js', 'js/safety.js', 'js/meta.js', 'js/engine.js', 'js/library.js', 'js/player.js', 'js/dj.js', 'js/mixer.js', 'js/updater.js', 'js/ui.js', 'js/features.js', 'js/views.js', 'js/flow.js', 'js/lyrics.js', 'js/shell.js', 'js/immersive.js', 'js/anywhere.js', 'js/native.js', 'icons/icon-192.png', 'icons/icon-512.png'];
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'config.json', 'changelog.json', 'css/style.css', 'js/version.js', 'js/util.js', 'js/db.js', 'js/safety.js', 'js/meta.js', 'js/engine.js', 'js/library.js', 'js/player.js', 'js/voice.js', 'js/dj.js', 'js/mixer.js', 'js/updater.js', 'js/ui.js', 'js/features.js', 'js/views.js', 'js/flow.js', 'js/lyrics.js', 'js/audition.js', 'js/shell.js', 'js/immersive.js', 'js/anywhere.js', 'js/native.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {

@@ -10,7 +10,7 @@
     set('tb-back', 'left'); set('tb-fwd', 'right'); set('tb-search-ic', 'search'); set('tb-settings', 'gear'); set('side-close', 'x');
     set('pb-prev', 'prev'); set('pb-next', 'next'); set('pb-lyrics', 'mic'); set('pb-queue', 'queue'); set('pb-sound', 'sliders'); set('pb-expand', 'expand');
     set('np-close', 'down'); set('np-like', 'heart'); set('np-more', 'more'); set('np-prev', 'prev'); set('np-next', 'next'); set('np-t-lyrics', 'mic'); set('np-t-sound', 'sliders'); set('np-t-queue', 'queue'); set('drop-ic', 'upload');
-    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], stats: ['chart', 'Stats'] };
+    const labels = { home: ['home', 'Home'], search: ['search', 'Search'], library: ['library', 'Your Library'], dj: ['spark', 'AI DJ'], flow: ['route', 'Flow'], audition: ['mic', 'AI Audition'], stats: ['chart', 'Stats'] };
     $$('#nav a').forEach((a) => { const [i, l] = labels[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
     const short = { home: ['home', 'Home'], search: ['search', 'Search'], dj: ['spark', 'DJ'], library: ['library', 'Library'] };
     $$('#mobilenav a').forEach((a) => { const [i, l] = short[a.dataset.nav]; a.innerHTML = icon(i) + `<span>${l}</span>`; });
@@ -352,7 +352,9 @@
     'eq-preset': (el) => { E.setEQAll(A.EQ_PRESETS[el.dataset.id]); $$('[data-eq]').forEach((i) => (i.value = E.eqGains[+i.dataset.eq])); },
     'set-theme': (el) => { A.setTheme(el.dataset.id); A.render(true); },
     'set-accent': (el) => { A.store.set('accent', el.dataset.id); U.applyAccent(U._lastColor); A.render(true); },
-    'test-voice': () => A.dj.say('Hey, it’s your DJ. Testing, one, two. How do I sound?', { duck: false }),
+    'test-voice': () => A.dj.say(A.pick(['Hey, it’s your DJ. How do I sound?', 'Testing, testing. Can you hear me okay?', 'Hi there. Ready when you are.']), { duck: false }),
+    'sv-get': () => { A.voice.enable(true); A.toast('Getting the studio voice ready. You can keep listening meanwhile.'); },
+    'sv-off': () => { A.voice.enable(false); A.render(true); },
     reanalyze: () => { A.analysis.reset(); A.toast('Re-analyzing your library'); A.render(true); },
     export: () => A.safety.exportFile(), import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json'; i.onchange = () => i.files[0] && A.safety.importFile(i.files[0]); i.click(); },
     'snapshot-now': async () => { await A.safety.snapshot('Made by you'); A.toast('Backed up on this device'); A.render(true); },

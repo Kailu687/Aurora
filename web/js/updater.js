@@ -14,6 +14,8 @@
   const UPDATE_KEY = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwfLIbeph/bWLpFKGZXqOw8fZ9DmydoKExAz+FEWyMXHyzIsWeNVV0pdxOKZ+2yea2cOd01aiPDA6Oq8kiAh5Rg==';
   // Android app builds and Windows versions from before the app could report its own version
   const LEGACY_ANDROID_BUILD = 19, LEGACY_WINDOWS_VERSION = '1.6.2';
+  // the oldest installed app (Android build / Windows version) that this version of Aurora's features work with
+  const NATIVE_MIN = { android: 21, windows: '1.7.0' }; // Android 21 adds the microphone for AI Audition
   A.DOWNLOADS_URL = 'https://kailashamarnath.me/Aurora/downloads/';
 
   UP.load = async () => { try { UP.cfg = await (await fetch('config.json', { cache: 'no-store' })).json(); } catch { UP.cfg = {}; } };
@@ -61,14 +63,17 @@
     const rel = sh.os === 'android' ? n.android : n.windows; if (!rel) return null;
     const newer = sh.os === 'android' ? rel.build > sh.build : vcmp(rel.version, sh.version) > 0;
     if (!newer) return null;
-    UP.native = { os: sh.os, version: rel.version, url: rel.url || A.DOWNLOADS_URL, notes: rel.notes || '' };
-    if (A.store.get('nativeSeen', '') !== sh.os + rel.version) A.updater.showNativeBanner();
+    // Most updates arrive inside the app by themselves. Only ask people to install a new app when the one they
+    // have is too old for this version's features; otherwise just mention it quietly in Settings.
+    const needed = sh.os === 'android' ? sh.build < NATIVE_MIN.android : vcmp(sh.version, NATIVE_MIN.windows) < 0;
+    UP.native = { os: sh.os, version: rel.version, url: rel.url || A.DOWNLOADS_URL, notes: rel.notes || '', needed };
+    if (needed && A.store.get('nativeSeen', '') !== sh.os + rel.version) A.updater.showNativeBanner();
     return UP.native;
   };
   UP.showNativeBanner = () => {
     const n = UP.native; if (!n || document.getElementById('native-up')) return;
     const b = document.createElement('div'); b.id = 'native-up'; b.className = 'up-chip glass';
-    b.innerHTML = `<div><b>New ${n.os === 'android' ? 'Android app' : 'Windows app'} · v${esc(n.version)}</b><small>${esc(n.notes || 'Some new features need the new app. Install it over this one: your music and playlists stay.')}</small></div><a class="btn accent sm" href="${esc(n.url)}" target="_blank" rel="noopener">Get it</a><button class="icon-btn sm" aria-label="Dismiss">${A.icon('x')}</button>`;
+    b.innerHTML = `<div><b>New ${n.os === 'android' ? 'Android app' : 'Windows app'} · v${esc(n.version)}</b><small>${esc(n.notes || 'Some new features need the new app. Install it over this one: your music and playlists stay.')}</small></div><a class="btn accent sm" href="${esc(n.url)}" target="_blank" rel="noopener">${n.os === 'android' ? 'Download' : 'Get it'}</a><button class="icon-btn sm" aria-label="Dismiss">${A.icon('x')}</button>`;
     b.querySelector('a').addEventListener('click', () => A.store.set('nativeSeen', n.os + n.version));
     b.querySelector('button').addEventListener('click', () => { A.store.set('nativeSeen', n.os + n.version); b.remove(); });
     document.body.appendChild(b);

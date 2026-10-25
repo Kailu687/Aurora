@@ -328,13 +328,71 @@
     let mix = null;
     if (src.size <= 14e6) { try { mix = A.mixAnalysis(data, SRATE); } catch (e) { A.log('beat grid failed: ' + e.message); } }
     if (mix) tempo = Math.round(mix.bpm);
-    return { energy: +energy.toFixed(3), tempo, bright: +bright.toFixed(3), rms: +rms.toFixed(4), pulse: +pulse.toFixed(3), loud: +loud.toFixed(3), mix };
+    // mood: major keys, brightness, a quicker pulse and a song that sits on its beat all read as happier/lighter
+    const dance = mix ? +A.clamp(0.65 * mix.dance + 0.35 * (1 - Math.min(1, Math.abs(tempo - 118) / 45)), 0, 1).toFixed(3) : +pulse.toFixed(3);
+    const k = mix && mix.key, modeV = k ? (k.minor ? 0.5 - 0.4 * k.clar : 0.5 + 0.4 * k.clar) : 0.5;
+    const valence = +A.clamp(0.45 * modeV + 0.2 * bright + 0.15 * tempoN + 0.2 * dance, 0, 1).toFixed(3);
+    return { energy: +energy.toFixed(3), tempo, bright: +bright.toFixed(3), rms: +rms.toFixed(4), pulse: +pulse.toFixed(3), loud: +loud.toFixed(3), dance, valence, key: k ? k.cam : null, mix };
   };
 
   // ---- DJ beat grid: exact tempo, where the beats and bars fall, and the song's structure ----
-  // Returns { v, bpm, beat0, bar0, bars: energy per bar 0-99, hook, i0, last } where phrases are 8 bars from bar0,
-  // hook = the strongest early phrase (usually the first chorus), i0 = first full-energy phrase, last = last full-energy phrase.
-  A.MIX_VERSION = 2;
+  // Returns { v, bpm, beat0, bar0, bars: energy per bar 0-99, hb, he, ib, lb, key, ... }.
+  // hb..he is the hook: the loudest section that also REPEATS through the song (a chorus comes back, a verse rarely
+  // does), extended to its full length so a mix never cuts it off halfway. ib is where an incoming song is brought in
+  // (the build into the hook) and lb is the end of the last full-energy section. Older fields (hook, i0, last, in
+  // 8-bar phrases) are kept so anything reading them keeps working.
+  A.MIX_VERSION = 3;
+  const KEYS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const PROF_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88], PROF_MIN = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+  A.camelot = (pc, minor) => { const maj = minor ? (pc + 3) % 12 : pc; return ((((maj * 7) % 12) + 7) % 12) + 1 + (minor ? 'A' : 'B'); };
+  // how well two keys mix: 1 same key, 0.85 neighbour on the Camelot wheel or relative major/minor, 0 clash
+  A.keyMatch = (a, b) => {
+    if (!a || !b) return 0.5; const na = parseInt(a, 10), nb = parseInt(b, 10), la = a.slice(-1), lb = b.slice(-1), d = Math.min((na - nb + 12) % 12, (nb - na + 12) % 12);
+    return a === b ? 1 : (la === lb && d === 1) || (na === nb && la !== lb) ? 0.85 : la === lb && d === 2 ? 0.45 : d === 7 && la === lb ? 0.4 : 0.1;
+  };
+  function fft(re, im) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = (-2 * Math.PI) / len, wr = Math.cos(ang), wi = Math.sin(ang), h = len >> 1;
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < h; k++) { const a = i + k, b = a + h, xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr; re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+    }
+  }
+  // 12-note pitch profile (chroma) for every frame, plus how much of each frame sits in the vocal band
+  function chromaFrames(data, SR) {
+    const W = 4096, H = 2048, n = Math.floor((data.length - W) / H); if (n < 8) return null;
+    const re = new Float32Array(W), im = new Float32Array(W), win = new Float32Array(W), pc = new Int8Array(W / 2), vox = new Uint8Array(W / 2);
+    for (let i = 0; i < W; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (W - 1));
+    for (let k = 0; k < W / 2; k++) { const f = (k * SR) / W; pc[k] = f < 80 || f > 4200 ? -1 : (Math.round(69 + 12 * Math.log2(f / 440)) % 12 + 12) % 12; vox[k] = f >= 300 && f <= 3400 ? 1 : 0; }
+    const ch = new Float32Array(n * 12), vr = new Float32Array(n), t0 = new Float32Array(n), mel = new Float32Array(n), sal = new Float32Array(n), en = new Float32Array(n);
+    const mag = new Float32Array(W / 2), wh = new Float32Array(W / 2), sc = new Float32Array(79), bw = SR / W, KW = Math.max(2, Math.round(120 / bw));
+    for (let f = 0; f < n; f++) {
+      const o = f * H; for (let i = 0; i < W; i++) { re[i] = data[o + i] * win[i]; im[i] = 0; }
+      fft(re, im); let tot = 1e-9, v = 0;
+      for (let k = 2; k < W / 2; k++) { const m = Math.sqrt(re[k] * re[k] + im[k] * im[k]); mag[k] = m; tot += m; if (vox[k]) v += m; if (pc[k] >= 0) ch[f * 12 + pc[k]] += m; }
+      vr[f] = v / tot; t0[f] = (o + W / 2) / SR; en[f] = tot;
+      // the most likely sung note (predominant melody): whiten the spectrum, then for every note A2..C6 add up its
+      // harmonics; the strongest note that also has a real fundamental wins
+      let run = 0; for (let k = 0; k < Math.min(W / 2, 2 * KW + 1); k++) run += mag[k];
+      for (let k = 0; k < W / 2; k++) { const lo = k - KW - 1, hi = k + KW; if (k > KW && hi < W / 2) { run += mag[hi] - mag[lo]; } wh[k] = mag[k] / (run / (2 * KW + 1) + 1e-9); }
+      const at = (fr) => { const x = fr / bw, i = Math.floor(x), t = x - i; return i + 1 < W / 2 ? wh[i] * (1 - t) + wh[i + 1] * t : 0; };
+      // (voices often have a weak fundamental, so all of the first 10 harmonics count; a candidate an octave too low
+      // only collects every other harmonic, and one an octave too high misses half of them)
+      let bs = 0, bm = 0; const S = sc; S.fill(0);
+      for (let j = 0; j < S.length; j++) {
+        const f0 = 440 * Math.pow(2, (45 + j * 0.5 - 69) / 12); let s = 0, hit = 0;
+        for (let h = 1; h <= 10 && h * f0 < 5000; h++) { const v = Math.max(0, at(h * f0) - 1); s += Math.pow(0.86, h - 1) * v; if (v > 0.5) hit++; }
+        S[j] = s * (0.6 + 0.4 * Math.min(1, hit / 5));
+      }
+      let bj = -1; for (let j = 0; j < S.length; j++) if (S[j] > bs) { bs = S[j]; bj = j; }
+      // the winner may be the 2nd harmonic of a lower note: take the octave below when it is nearly as strong and
+      // its odd harmonics (which the higher candidate can't explain) are really there
+      if (bj >= 24) { const fl = 440 * Math.pow(2, (45 + (bj - 24) * 0.5 - 69) / 12); if (S[bj - 24] >= 0.55 * bs && at(fl * 3) > 1.6 && at(fl) + at(fl * 5) > 2.6) bj -= 24; }
+      if (bj >= 0) bm = 45 + bj * 0.5;
+      mel[f] = bm; sal[f] = bs;
+    }
+    return { ch, vr, t: t0, n, mel, sal, en };
+  }
   A.mixAnalysis = function (data, SR) {
     const dur = data.length / SR; if (dur < 30) return null;
     const HOP = 256, fps = SR / HOP, N = Math.floor(data.length / HOP) - 1;
@@ -364,22 +422,95 @@
     let fb = -Infinity, fphase = 0;
     for (let b = bpm - 1.2; b <= bpm + 1.2; b += 0.02) { const [sc, ph] = comb((60 / b) * fps); if (sc > fb) { fb = sc; fphase = ph; bpm = b; } }
     const P = (60 / bpm) * fps, beat = 60 / bpm;
-    // 3) downbeat: the beat (of four) where the bass hits hardest
-    let bj = 0, bv = -1;
-    for (let j = 0; j < 4; j++) { let s = 0; for (let x = fphase + j * P; x < N; x += 4 * P) s += at(bassOn, x) + 0.5 * at(bassOn, x + 1); if (s > bv) { bv = s; bj = j; } }
+    // how strongly the song sits on its beat (on-beat onsets against off-beat ones): a "danceability" feel
+    let onB = 0, offB = 0; for (let x = fphase; x + P / 2 < N; x += P) { onB += Math.max(0, at(onset, x) + m); offB += Math.max(0, at(onset, x + P / 2) + m); }
+    const dance = A.clamp(((onB - offB) / (onB + offB + 1e-9)) * 2.2, 0, 1);
+    // 3) downbeat: the beat (of four) where the chords change and the bass hits hardest
+    const cf = chromaFrames(data, SR), nBeats = Math.floor((N - fphase) / P), bch = Array.from({ length: nBeats }, () => new Float32Array(12));
+    if (cf) for (let f = 0; f < cf.n; f++) { const k = Math.floor((cf.t[f] * fps - fphase) / P); if (k >= 0 && k < nBeats) for (let c = 0; c < 12; c++) bch[k][c] += cf.ch[f * 12 + c]; }
+    const cosv = (u, w) => { let d = 0, a1 = 0, a2 = 0; for (let c = 0; c < 12; c++) { d += u[c] * w[c]; a1 += u[c] * u[c]; a2 += w[c] * w[c]; } return a1 && a2 ? d / Math.sqrt(a1 * a2) : 1; };
+    const bassS = [0, 0, 0, 0], chordS = [0, 0, 0, 0];
+    for (let j = 0; j < 4; j++) {
+      for (let x = fphase + j * P; x < N; x += 4 * P) bassS[j] += at(bassOn, x) + 0.5 * at(bassOn, x + 1);
+      if (cf) for (let k = j; k < nBeats; k += 4) if (k > 0) chordS[j] += 1 - cosv(bch[k - 1], bch[k]);
+    }
+    const bsum = bassS.reduce((p, v) => p + v, 0) || 1, csum = chordS.reduce((p, v) => p + v, 0) || 1;
+    let bj = 0, bv = -Infinity;
+    for (let j = 0; j < 4; j++) { const sc = bassS[j] / bsum + (cf ? 1.5 * (chordS[j] / csum) : 0); if (sc > bv) { bv = sc; bj = j; } }
     const beat0 = (fphase / fps) % beat; let bar0 = (fphase + bj * P) / fps; while (bar0 - 4 * beat >= 0) bar0 -= 4 * beat;
-    // 4) energy per bar and 8-bar phrases
+    // 4) energy per bar
     const barF = 4 * P, bars = [];
     for (let x = bar0 * fps; x + barF <= N; x += barF) { let e = 0; for (let f = Math.floor(x); f < x + barF; f++) e += full[f]; bars.push(Math.sqrt(e / barF)); }
-    if (bars.length < 16) return null;
-    const mx = Math.max(...bars) || 1, barsN = bars.map((v) => Math.round((v / mx) * 99));
-    const ph = []; for (let i = 0; i + 8 <= barsN.length; i += 8) ph.push(barsN.slice(i, i + 8).reduce((s, v) => s + v, 0) / 8);
-    const pmax = Math.max(...ph), np = ph.length;
-    let hook = 0, hv = -1; ph.forEach((v, i) => { const pos = i / np; if (pos >= 0.12 && pos <= 0.85 && v >= pmax * 0.9 && hv < 0) { hook = i; hv = v; } });
-    if (hv < 0) hook = ph.indexOf(pmax);
-    let i0 = ph.findIndex((v) => v >= pmax * 0.55); if (i0 < 0) i0 = 0;
-    let last = np - 1; while (last > hook && ph[last] < pmax * 0.55) last--;
-    return { v: A.MIX_VERSION, bpm: +bpm.toFixed(2), beat0: +beat0.toFixed(3), bar0: +bar0.toFixed(3), bars: barsN, hook, i0, last, dur: +dur.toFixed(2) };
+    const nb = bars.length; if (nb < 16) return null;
+    const mx = Math.max(...bars) || 1, barsN = bars.map((v) => Math.round((v / mx) * 99)), en = barsN.map((v) => v / 99);
+    // 5) harmony per bar (chroma) and how much of each bar is in the vocal range
+    const bc = Array.from({ length: nb }, () => new Float32Array(12)), bvx = new Float32Array(nb), bcnt = new Float32Array(nb), keyAcc = new Float32Array(12);
+    if (cf) for (let f = 0; f < cf.n; f++) {
+      const bi = Math.floor((cf.t[f] - bar0) / (4 * beat)); if (bi < 0 || bi >= nb) continue;
+      for (let k = 0; k < 12; k++) { bc[bi][k] += cf.ch[f * 12 + k]; keyAcc[k] += cf.ch[f * 12 + k]; } bvx[bi] += cf.vr[f]; bcnt[bi]++;
+    }
+    for (let i = 0; i < nb; i++) { let s = 0; for (let k = 0; k < 12; k++) s += bc[i][k] * bc[i][k]; s = Math.sqrt(s) || 1; for (let k = 0; k < 12; k++) bc[i][k] /= s; if (bcnt[i]) bvx[i] /= bcnt[i]; }
+    const sim = (i, j) => { let s = 0; for (let k = 0; k < 12; k++) s += bc[i][k] * bc[j][k]; return s; };
+    // 6) repetition: for each bar, how strongly the 4 bars from it come back elsewhere in the song (8+ bars away),
+    //    compared with how similar any two random stretches of this song are
+    const W4 = (i, j) => { let s = 0; for (let k = 0; k < 4; k++) s += sim(i + k, j + k); return s / 4; };
+    const pairs = []; for (let i = 0; i + 4 <= nb; i += 2) for (let j = i + 8; j + 4 <= nb; j += 2) pairs.push(W4(i, j));
+    let mu = 0, sd = 0; pairs.forEach((v) => (mu += v)); mu /= pairs.length || 1; pairs.forEach((v) => (sd += (v - mu) ** 2)); sd = Math.sqrt(sd / (pairs.length || 1)) || 0.01;
+    const rep = new Float32Array(nb);
+    if (cf) for (let i = 0; i + 4 <= nb; i++) { let s = 0; for (let j = 0; j + 4 <= nb; j++) { if (Math.abs(i - j) < 8) continue; const z = (W4(i, j) - mu) / sd; if (z > 0.8) s += Math.min(2.5, z - 0.8); } rep[i] = s; }
+    const rmax = Math.max(...rep) || 1; for (let i = 0; i < nb; i++) rep[i] /= rmax;
+    const avg = (arr, s, n) => { let t = 0, c = 0; for (let i = Math.max(0, s); i < Math.min(nb, s + n); i++) { t += arr[i]; c++; } return c ? t / c : 0; };
+    // 7) the hook: score every 8-bar stretch (on a 2-bar grid, since some songs open with a 2-bar pickup) on loudness, repetition, a lift into it and vocals
+    const vmax = Math.max(...bvx) || 1, cand = [];
+    for (let s = 0; s + 8 <= nb; s += 2) {
+      const E = avg(en, s, 8), R = avg(rep, s, 8), lift = Math.max(0, avg(en, s, 4) - avg(en, s - 4, 4)), V = avg(bvx, s, 8) / vmax, pos = s / nb;
+      let sc = 0.42 * E + (cf ? 0.36 * R : 0) + 0.12 * Math.min(1, lift * 3) + (cf ? 0.1 * V : 0);
+      if (pos < 0.06 || pos > 0.88) sc *= 0.75; // an intro or outro is never the hook
+      cand.push({ s, sc, E, R });
+    }
+    const top = Math.max(...cand.map((c) => c.sc));
+    // the first time the chorus arrives is the one to play: earliest stretch close to the best score
+    let hc = cand.find((c) => c.sc >= top * 0.9 && c.s / nb <= 0.8) || cand.find((c) => c.sc === top);
+    // then settle on exactly where it starts: the best-scoring start within a few bars of it
+    hc = cand.filter((c) => Math.abs(c.s - hc.s) <= 4).reduce((p, c) => (c.sc > p.sc ? c : p), hc);
+    const hb = hc.s;
+    // let the hook run its full length: keep going in 4-bar steps while it stays loud and is still the repeated part
+    let he = hb + 8;
+    while (he + 4 <= nb && he - hb < 24) { const E = avg(en, he, 4); if (E >= hc.E * 0.82 && (!cf || avg(rep, he - 2, 4) >= hc.R * 0.55 || E >= hc.E)) he += 4; else break; }
+    // where to bring the song in: the stretch that builds into the hook, but never from near-silence
+    let ib = Math.max(0, hb - 8); while (ib < hb && avg(en, ib, 4) < 0.18) ib += 4;
+    // end of the last full-energy stretch (for whole-song mixes)
+    let lb = nb; while (lb - 4 > he && avg(en, lb - 4, 4) < 0.55) lb -= 4;
+    // 8) key and mode from the overall harmony (Krumhansl profiles), and a rough brightness of mood
+    let key = null;
+    if (cf) {
+      const tot = keyAcc.reduce((s, v) => s + v, 0) || 1, x = Array.from(keyAcc, (v) => v / tot), corr = (p, r) => { const mx2 = x.reduce((s, v) => s + v, 0) / 12, mp = p.reduce((s, v) => s + v, 0) / 12; let a1 = 0, a2 = 0, a3 = 0; for (let k = 0; k < 12; k++) { const u = x[(k + r) % 12] - mx2, w = p[k] - mp; a1 += u * w; a2 += u * u; a3 += w * w; } return a1 / Math.sqrt(a2 * a3 || 1); };
+      const sc = []; for (let r = 0; r < 12; r++) { sc.push([corr(PROF_MAJ, r), r, 0]); sc.push([corr(PROF_MIN, r), r, 1]); }
+      sc.sort((p, q) => q[0] - p[0]);
+      const [c1, pc, minor] = sc[0], c2 = sc[1][0];
+      key = { name: KEYS[pc] + (minor ? 'm' : ''), cam: A.camelot(pc, minor), minor: !!minor, clar: +A.clamp((c1 - c2) * 4 + c1 * 0.5, 0, 1).toFixed(2) };
+    }
+    // 9) the sung melody's range (an estimate from the full mix): notes from frames that are loud, vocal-heavy and
+    //    have a clear pitch, as percentiles in MIDI note numbers. Used by AI Audition to match songs to a voice.
+    let mel = null;
+    if (cf) {
+      const idx = []; for (let f = 0; f < cf.n; f++) idx.push(f);
+      const ens = idx.map((f) => cf.en[f]).sort((p, q) => p - q), eMed = ens[Math.floor(ens.length / 2)] || 0;
+      const sals = idx.map((f) => cf.sal[f]).sort((p, q) => p - q), sTop = sals[Math.floor(sals.length * 0.4)] || 0;
+      const notes = []; for (let f = 0; f < cf.n; f++) if (cf.en[f] >= eMed * 0.6 && cf.sal[f] >= sTop && cf.vr[f] >= 0.2 && cf.mel[f]) notes.push(cf.mel[f]);
+      if (notes.length >= 40) {
+        notes.sort((p, q) => p - q); const q = (x) => +notes[Math.min(notes.length - 1, Math.floor(notes.length * x))].toFixed(1);
+        const hist = new Array(40).fill(0); notes.forEach((v) => { const i = Math.round(v) - 45; if (i >= 0 && i < 40) hist[i]++; });
+        const hm = Math.max(...hist) || 1;
+        mel = { p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), hist: hist.map((v) => Math.round((v / hm) * 99)), n: notes.length };
+      }
+    }
+    const np = Math.floor(nb / 8);
+    return {
+      v: A.MIX_VERSION, bpm: +bpm.toFixed(2), beat0: +beat0.toFixed(3), bar0: +bar0.toFixed(3), bars: barsN, dur: +dur.toFixed(2),
+      hb, he, ib, lb, key, mel, dance: +dance.toFixed(2), vocal: +(avg(bvx, 0, nb) || 0).toFixed(2),
+      hook: Math.floor(hb / 8), i0: Math.floor(ib / 8), last: Math.max(Math.floor(hb / 8), Math.min(np - 1, Math.ceil(lb / 8) - 1))
+    };
   };
 
   // ---- lyrics ----

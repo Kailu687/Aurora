@@ -95,12 +95,17 @@ const files = [];
   }
 })(web, '');
 for (const f of files) { const dest = path.join(appOut, f); fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.copyFileSync(path.join(web, f), dest); }
+// the studio voice's engine (~21 MB) is served next to the app but is not part of the update package: apps fetch it
+// only when someone turns the studio voice on, and check it against the SHA-256 pinned in web/js/voice.js
+const voiceSrc = path.join(root, 'voice');
+if (fs.existsSync(voiceSrc)) { fs.mkdirSync(path.join(appOut, 'voice'), { recursive: true }); copyDir(voiceSrc, path.join(appOut, 'voice')); }
 const listed = files.filter((f) => f !== 'sw.js').map((f) => { const b = fs.readFileSync(path.join(web, f)); return { path: f, size: b.length, sha256: crypto.createHash('sha256').update(b).digest('hex') }; });
 // What the newest Android app / Windows installer is, so older installs can be told a new one exists
 const hashesF = path.join(root, 'downloads', 'hashes.json'), hj = fs.existsSync(hashesF) ? JSON.parse(fs.readFileSync(hashesF, 'utf8')) : {};
 const DL_PAGE = 'https://kailashamarnath.me/Aurora/downloads/';
 const native = {
-  ...(hj.android && hj.android.build ? { android: { build: hj.android.build, version: hj.version, url: DL_PAGE, notes: hj.android.notes || '' } } : {}),
+  // Android: link straight to the APK so the phone downloads it in one tap (no web page in between)
+  ...(hj.android && hj.android.build ? { android: { build: hj.android.build, version: hj.version, url: DL_PAGE + 'Aurora.apk', notes: hj.android.notes || '' } } : {}),
   ...(hj.windows ? { windows: { version: hj.version, url: DL_PAGE, notes: hj.windows.notes || '' } } : {})
 };
 const manifest = { name, build, notes, published: new Date().toISOString(), files: listed, native: Object.keys(native).length ? native : null };

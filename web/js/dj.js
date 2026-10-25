@@ -4,18 +4,18 @@
 
   // ---------- vibes ----------
   A.VIBES = [
-    { id: 'chill', name: 'Chill', tag: 'Easy, breezy, unwind', g: ['#5ee7df', '#4a6cf7'], e: [0.08, 0.42], bpm: [60, 105], genres: ['chill', 'lofi', 'lo-fi', 'ambient', 'acoustic', 'jazz', 'soul', 'bossa', 'downtempo', 'folk', 'trip-hop', 'new age', 'easy', 'singer'], words: ['chill', 'calm', 'soft', 'slow', 'sunday', 'rain'] },
-    { id: 'hype', name: 'Hype', tag: 'Turn it all the way up', g: ['#ff512f', '#dd2476'], e: [0.68, 1], bpm: [118, 180], genres: ['edm', 'dance', 'hip hop', 'hip-hop', 'rap', 'trap', 'house', 'electronic', 'techno', 'drum', 'dubstep', 'bass', 'rave', 'metal', 'punk'], words: ['hype', 'turn up', 'bangers', 'remix', 'club'] },
-    { id: 'focus', name: 'Focus', tag: 'Deep work, no distractions', g: ['#43cea2', '#185a9d'], e: [0.22, 0.55], bpm: [70, 125], genres: ['instrumental', 'classical', 'ambient', 'piano', 'lofi', 'lo-fi', 'electronic', 'soundtrack', 'score', 'post-rock', 'study', 'focus', 'new age'], words: ['focus', 'study', 'instrumental', 'piano'] },
-    { id: 'latenight', name: 'Late Night', tag: 'Neon lights, empty streets', g: ['#7f00ff', '#e100ff'], e: [0.25, 0.62], bpm: [70, 118], genres: ['r&b', 'rnb', 'soul', 'synthwave', 'trip-hop', 'downtempo', 'neo soul', 'chillwave', 'night', 'dream', 'electronic', 'lo-fi', 'lofi'], words: ['night', 'midnight', 'dark', 'moon', 'neon', 'city'] },
-    { id: 'workout', name: 'Workout', tag: 'Pace, power, repeat', g: ['#f12711', '#f5af19'], e: [0.72, 1], bpm: [125, 180], genres: ['edm', 'dance', 'hip hop', 'hip-hop', 'rap', 'rock', 'metal', 'house', 'techno', 'trap', 'electronic', 'pop', 'punk', 'workout'], words: ['run', 'gym', 'workout', 'power', 'beast'] },
-    { id: 'party', name: 'Party', tag: 'Everyone on the floor', g: ['#fc466b', '#3f5efb'], e: [0.6, 0.95], bpm: [100, 140], genres: ['pop', 'dance', 'latin', 'hip hop', 'hip-hop', 'disco', 'funk', 'reggaeton', 'house', 'edm', 'r&b', 'top 40', 'afro', 'party'], words: ['party', 'dance', 'club', 'baila', 'tonight'] },
-    { id: 'feelgood', name: 'Feel Good', tag: 'Sunshine in audio form', g: ['#f9d423', '#ff4e50'], e: [0.45, 0.82], bpm: [90, 140], genres: ['pop', 'funk', 'disco', 'reggae', 'soul', 'indie', 'ska', 'motown', 'oldies', 'happy', 'summer', 'country'], words: ['happy', 'sun', 'smile', 'good', 'love', 'summer', 'dance'] },
-    { id: 'sad', name: 'In My Feelings', tag: 'Soft, slow, a little sad', g: ['#4b6cb7', '#182848'], e: [0.05, 0.4], bpm: [55, 100], genres: ['ballad', 'acoustic', 'indie', 'singer', 'folk', 'blues', 'sad', 'emo', 'piano', 'country', 'slowcore'], words: ['sad', 'cry', 'tears', 'alone', 'lonely', 'broken', 'goodbye', 'miss', 'heart', 'rain', 'blue'] },
-    { id: 'romance', name: 'Romance', tag: 'Candlelight and slow dances', g: ['#ee0979', '#ff6a00'], e: [0.12, 0.55], bpm: [60, 112], genres: ['r&b', 'rnb', 'soul', 'jazz', 'ballad', 'love', 'bossa', 'latin', 'vocal', 'easy listening', 'romantic'], words: ['love', 'kiss', 'baby', 'heart', 'darling', 'forever', 'romance', 'you'] },
+    { id: 'chill', name: 'Chill', tag: 'Easy, breezy, unwind', g: ['#5ee7df', '#4a6cf7'], e: [0.08, 0.42], val: [0.3, 0.75], dance: [0, 0.7], bpm: [60, 105], genres: ['chill', 'lofi', 'lo-fi', 'ambient', 'acoustic', 'jazz', 'soul', 'bossa', 'downtempo', 'folk', 'trip-hop', 'new age', 'easy', 'singer'], words: ['chill', 'calm', 'soft', 'slow', 'sunday', 'rain'] },
+    { id: 'hype', name: 'Hype', tag: 'Turn it all the way up', g: ['#ff512f', '#dd2476'], e: [0.68, 1], val: [0.4, 1], dance: [0.55, 1], bpm: [118, 180], genres: ['edm', 'dance', 'hip hop', 'hip-hop', 'rap', 'trap', 'house', 'electronic', 'techno', 'drum', 'dubstep', 'bass', 'rave', 'metal', 'punk'], words: ['hype', 'turn up', 'bangers', 'remix', 'club'] },
+    { id: 'focus', name: 'Focus', tag: 'Deep work, no distractions', g: ['#43cea2', '#185a9d'], e: [0.22, 0.55], val: [0.25, 0.7], dance: [0, 0.6], bpm: [70, 125], genres: ['instrumental', 'classical', 'ambient', 'piano', 'lofi', 'lo-fi', 'electronic', 'soundtrack', 'score', 'post-rock', 'study', 'focus', 'new age'], words: ['focus', 'study', 'instrumental', 'piano'] },
+    { id: 'latenight', name: 'Late Night', tag: 'Neon lights, empty streets', g: ['#7f00ff', '#e100ff'], e: [0.25, 0.62], val: [0.15, 0.6], dance: [0.3, 0.85], bpm: [70, 118], genres: ['r&b', 'rnb', 'soul', 'synthwave', 'trip-hop', 'downtempo', 'neo soul', 'chillwave', 'night', 'dream', 'electronic', 'lo-fi', 'lofi'], words: ['night', 'midnight', 'dark', 'moon', 'neon', 'city'] },
+    { id: 'workout', name: 'Workout', tag: 'Pace, power, repeat', g: ['#f12711', '#f5af19'], e: [0.72, 1], val: [0.35, 1], dance: [0.6, 1], bpm: [125, 180], genres: ['edm', 'dance', 'hip hop', 'hip-hop', 'rap', 'rock', 'metal', 'house', 'techno', 'trap', 'electronic', 'pop', 'punk', 'workout'], words: ['run', 'gym', 'workout', 'power', 'beast'] },
+    { id: 'party', name: 'Party', tag: 'Everyone on the floor', g: ['#fc466b', '#3f5efb'], e: [0.6, 0.95], val: [0.5, 1], dance: [0.6, 1], bpm: [100, 140], genres: ['pop', 'dance', 'latin', 'hip hop', 'hip-hop', 'disco', 'funk', 'reggaeton', 'house', 'edm', 'r&b', 'top 40', 'afro', 'party'], words: ['party', 'dance', 'club', 'baila', 'tonight'] },
+    { id: 'feelgood', name: 'Feel Good', tag: 'Sunshine in audio form', g: ['#f9d423', '#ff4e50'], e: [0.45, 0.82], val: [0.6, 1], dance: [0.45, 1], bpm: [90, 140], genres: ['pop', 'funk', 'disco', 'reggae', 'soul', 'indie', 'ska', 'motown', 'oldies', 'happy', 'summer', 'country'], words: ['happy', 'sun', 'smile', 'good', 'love', 'summer', 'dance'] },
+    { id: 'sad', name: 'In My Feelings', tag: 'Soft, slow, a little sad', g: ['#4b6cb7', '#182848'], e: [0.05, 0.4], val: [0, 0.4], dance: [0, 0.55], bpm: [55, 100], genres: ['ballad', 'acoustic', 'indie', 'singer', 'folk', 'blues', 'sad', 'emo', 'piano', 'country', 'slowcore'], words: ['sad', 'cry', 'tears', 'alone', 'lonely', 'broken', 'goodbye', 'miss', 'heart', 'rain', 'blue'] },
+    { id: 'romance', name: 'Romance', tag: 'Candlelight and slow dances', g: ['#ee0979', '#ff6a00'], e: [0.12, 0.55], val: [0.3, 0.7], dance: [0.1, 0.65], bpm: [60, 112], genres: ['r&b', 'rnb', 'soul', 'jazz', 'ballad', 'love', 'bossa', 'latin', 'vocal', 'easy listening', 'romantic'], words: ['love', 'kiss', 'baby', 'heart', 'darling', 'forever', 'romance', 'you'] },
     { id: 'throwback', name: 'Throwback', tag: 'Golden-era classics', g: ['#f7971e', '#ffd200'], e: [0.25, 0.9], bpm: [70, 150], genres: ['oldies', 'classic', 'disco', 'retro', '80s', '90s', 'new wave', 'funk', 'soul', 'motown', 'classic rock', 'britpop', 'grunge'], words: [], years: [1960, 2008] },
-    { id: 'roadtrip', name: 'Road Trip', tag: 'Windows down, volume up', g: ['#56ab2f', '#a8e063'], e: [0.45, 0.88], bpm: [90, 150], genres: ['rock', 'classic rock', 'country', 'alternative', 'indie', 'pop rock', 'americana', 'folk rock', 'southern', 'alternrock', 'blues'], words: ['road', 'drive', 'highway', 'freedom', 'ride', 'wild', 'home'] },
-    { id: 'sleep', name: 'Wind Down', tag: 'Drift off gently', g: ['#2c3e50', '#4ca1af'], e: [0, 0.28], bpm: [40, 90], genres: ['ambient', 'new age', 'classical', 'piano', 'meditative', 'sleep', 'instrumental', 'space', 'lullaby', 'drone'], words: ['sleep', 'dream', 'lullaby', 'quiet', 'night', 'peace'] }
+    { id: 'roadtrip', name: 'Road Trip', tag: 'Windows down, volume up', g: ['#56ab2f', '#a8e063'], e: [0.45, 0.88], val: [0.45, 1], dance: [0.35, 0.9], bpm: [90, 150], genres: ['rock', 'classic rock', 'country', 'alternative', 'indie', 'pop rock', 'americana', 'folk rock', 'southern', 'alternrock', 'blues'], words: ['road', 'drive', 'highway', 'freedom', 'ride', 'wild', 'home'] },
+    { id: 'sleep', name: 'Wind Down', tag: 'Drift off gently', g: ['#2c3e50', '#4ca1af'], e: [0, 0.28], val: [0.2, 0.6], dance: [0, 0.35], bpm: [40, 90], genres: ['ambient', 'new age', 'classical', 'piano', 'meditative', 'sleep', 'instrumental', 'space', 'lullaby', 'drone'], words: ['sleep', 'dream', 'lullaby', 'quiet', 'night', 'peace'] }
   ];
   A.vibeById = (id) => A.VIBES.find((v) => v.id === id);
   A.vibeOfDay = () => { const h = new Date().getHours(); return h < 6 ? 'sleep' : h < 10 ? 'feelgood' : h < 14 ? 'focus' : h < 18 ? 'roadtrip' : h < 22 ? 'party' : 'latenight'; };
@@ -34,7 +34,9 @@
     if (t.an) {
       const e = rangeFit(t.an.energy, vibe.e, 0.35), b = t.an.tempo ? rangeFit(t.an.tempo, vibe.bpm, 40) : 0.5;
       s = 0.3 * gs + 0.45 * e + 0.12 * b + (vibe.years ? 0.13 * era : 0.13 * 0.5);
-      if (!vibe.years) s += 0.0;
+      // the feel of the song itself: happy or sad (major/minor key, brightness) and how danceable its groove is
+      if (t.an.valence != null && vibe.val) s += 0.22 * (rangeFit(t.an.valence, vibe.val, 0.25) - 0.5);
+      if (t.an.dance != null && vibe.dance) s += 0.16 * (rangeFit(t.an.dance, vibe.dance, 0.3) - 0.5);
     } else s = 0.62 * gs + 0.2 * 0.4 + (vibe.years ? 0.18 * era : 0.1);
     if (forceGenres && forceGenres.size) { let m = false; for (const k of forceGenres) if (g.includes(k)) { m = true; break; } s = m ? s + 0.35 : s * 0.25; }
     return s;
@@ -117,60 +119,98 @@
         sp._u = u; speechSynthesis.speak(u);
       });
     },
-    cancel() { if (window.AuroraAndroid) { try { window.AuroraAndroid.stopSpeak(); } catch { /* */ } if (sp._native) { const r = sp._native; sp._native = null; r(false); } sp.speaking = false; dj._unduck(); return; } if (sp.ok && (sp.speaking || speechSynthesis.speaking || speechSynthesis.pending)) { speechSynthesis.cancel(); } sp.speaking = false; dj._unduck(); }
+    cancel() { if (A.voice) A.voice.stop(); if (window.AuroraAndroid) { try { window.AuroraAndroid.stopSpeak(); } catch { /* */ } if (sp._native) { const r = sp._native; sp._native = null; r(false); } sp.speaking = false; dj._unduck(); return; } if (sp.ok && (sp.speaking || speechSynthesis.speaking || speechSynthesis.pending)) { speechSynthesis.cancel(); } sp.speaking = false; dj._unduck(); }
   };
   sp.load();
 
   // ---------- DJ script writing ----------
+  // A real DJ says little, says it with feeling, and matches the room: lines come from the mood of the set, not from
+  // the file's tags. Names are used sparingly (mostly just the title), and nothing technical is ever read out.
   A.DJ_STYLES = {
-    smooth: { label: 'Smooth', dj: 'Nova', rate: 0.97, pitch: 1.0, start: ['Hey, it’s {dj}, and tonight we’re keeping it {vibe}. Let’s ease in with {title} by {artist}.', 'Welcome in. {dj} here. Your {vibe} set starts now, beginning with {artist} and {title}.', 'Okay, {vibe} mode is on. I’m {dj}, and I’ve got a good one to open: {title}, {artist}.'], trans: ['That was {prev}. Next up, {artist} with {title}.', 'Mmm, nice. Here’s {artist} — this is {title}.', 'Let’s keep it flowing with {title} from {artist}.', 'Smooth. Now, {artist}, {title}.', 'You’re listening to {dj}. This one’s {title} by {artist}.', 'Staying right in the groove — {artist}, {title}.'], up: ['Let’s lift the energy a little.', 'Picking things up.'], down: ['Easing it down a notch.', 'Let’s take a breath.'], ack: { up: 'You got it, bringing the energy up.', down: 'Sure, dialing it down.', more: 'Say less. More of this vibe coming.', change: 'Switching gears for you.' } },
-    hype: { label: 'Hype', dj: 'Blaze', rate: 1.08, pitch: 1.05, start: ['Yo yo yo, it’s {dj} in the building! {vibe} vibes ONLY. First up, {title} by {artist}!', 'Let’s GOOO! {dj} on the decks, and we’re opening with {artist}, {title}!', 'Hey, hey! {vibe} set, locked in. Kicking it off with {title}!'], trans: ['That was {prev}! Now run it back with {artist}, {title}!', 'Oh, you KNOW this one — {title}, {artist}!', 'Keep it moving! {artist} with {title}!', 'Turn it up! {title} by {artist}!', 'Don’t touch that dial. {artist}, {title}, right now!', 'Next one’s a heater: {title}!'], up: ['Time to crank it!', 'Okay, we’re going up!'], down: ['Quick breather, we’ll be back!', 'Cooling it for a second.'], ack: { up: 'Louder! Say no more.', down: 'Alright, cooling it down.', more: 'More of this? Coming right up!', change: 'New direction! Let’s go!' } },
-    zen: { label: 'Zen', dj: 'Echo', rate: 0.9, pitch: 0.95, start: ['Hi, I’m {dj}. Take a breath. We begin gently with {title} by {artist}.', 'Welcome. {vibe}. Nothing else matters for a while. Here is {title}, from {artist}.'], trans: ['{artist}, with {title}.', 'Let that settle. Next, {title} by {artist}.', 'And now, {title}. {artist}.', 'Floating on. {artist}, {title}.', 'Just breathe. This is {title}.'], up: ['A little more light now.'], down: ['Softer now.'], ack: { up: 'A little more life, then.', down: 'Softer. Slower.', more: 'More of this. Stay with it.', change: 'Let’s drift somewhere new.' } }
+    smooth: { label: 'Smooth', dj: 'Nova', rate: 0.98, pitch: 1.0, speed: 1.0, ack: { up: 'You got it. Lifting it up.', down: 'Sure. Bringing it down.', more: 'More of this? Easy.', change: 'Switching it up for you.' } },
+    hype: { label: 'Hype', dj: 'Blaze', rate: 1.06, pitch: 1.04, speed: 1.08, ack: { up: 'Louder? Say no more!', down: 'Alright, quick breather.', more: 'More of this, coming up!', change: 'New direction. Let’s go!' } },
+    zen: { label: 'Zen', dj: 'Echo', rate: 0.9, pitch: 0.96, speed: 0.9, ack: { up: 'A little more light, then.', down: 'Softer. Slower.', more: 'Stay with this.', change: 'Let’s drift somewhere new.' } }
   };
-
-  function timeWord() { const h = new Date().getHours(); return h < 5 ? 'in the middle of the night' : h < 12 ? 'this morning' : h < 17 ? 'this afternoon' : h < 21 ? 'this evening' : 'tonight'; }
-  function facts(t, prev, s) {
-    const f = [];
-    if (t.year) f.push(`That one’s from ${t.year}.`, `${t.year}, and it still hits.`);
-    if (t.album) f.push(`Pulled from the album ${t.album}.`);
-    if (t.genre) f.push(`A little ${t.genre} for you.`);
-    if (t.plays >= 5) f.push(`You’ve played this ${t.plays} times, so I’m guessing it’s a favorite.`);
-    if (t.plays === 0) f.push('A track you haven’t spun yet. Fresh ears.');
-    if (t.liked) f.push('One of your liked songs.');
-    if (t.an && t.an.tempo) f.push(`Sitting at about ${t.an.tempo} beats per minute.`);
-    if (prev && prev.artist === t.artist) f.push(`More ${t.artist}, because why not.`);
-    f.push(`Perfect ${timeWord()}.`);
-    if (s.n > 0 && s.n % 5 === 0) f.push(`That’s ${s.n} tracks into the ${s.vibe.name} set.`);
-    return A.pick(f);
-  }
-  function fill(str, c) { return str.replace(/\{(\w+)\}/g, (_, k) => c[k] || ''); }
-  function writeLine(t, prev, s, moment) {
-    const S = A.DJ_STYLES[s.style], c = { dj: S.dj, vibe: s.vibe.name, title: t.title, artist: t.artist, prev: prev ? prev.title : '' };
-    let line = fill(A.pick(moment === 'start' ? S.start : S.trans), c);
-    if (moment !== 'start' && prev && t.an && prev.an) {
-      const d = t.an.energy - prev.an.energy;
-      if (d > 0.22 && Math.random() < 0.7) line = A.pick(S.up) + ' ' + line; else if (d < -0.22 && Math.random() < 0.7) line = A.pick(S.down) + ' ' + line;
+  const MOODG = { hype: 'high', workout: 'high', party: 'high', feelgood: 'warm', roadtrip: 'warm', throwback: 'warm', chill: 'mellow', focus: 'mellow', latenight: 'mellow', romance: 'mellow', sad: 'soft', sleep: 'soft' };
+  const MOOD_SPEED = { high: 1.05, warm: 1, mellow: 0.95, soft: 0.9 };
+  A.djMood = (vibe) => MOODG[(vibe && vibe.id) || vibe] || 'warm';
+  const LINES = {
+    high: {
+      open: ['{dj} here. Let’s get loud.', 'It’s {dj}. You ready? Let’s go.', '{dj} on the decks {time}. Turn it up.', 'Okay, {dj} here, and we are not slowing down {time}.'],
+      none: ['Let’s go!', 'Hands up. Here we go.', 'Don’t slow down now.', 'Keep that energy right there.', 'Okay, this is where it gets good.', 'Feel that? That’s the good stuff.', 'Louder. Trust me.', 'No breaks. Keep moving.'],
+      title: ['Here’s {t}. Turn it up.', '{t}. Let’s go!', 'This one’s {t}, and it hits.', 'Run it. {t}.'],
+      artist: ['{a}, take it away.', 'Big one from {a}.', 'Can’t stop {a} {time}.'],
+      up: ['Let’s lift it!', 'Turning it up.', 'Higher now.'], down: ['Quick breather.', 'Pulling back, just for a second.'],
+      shout: ['Make some noise!', 'Here it comes!', 'Hands up!', 'Let’s go!', 'Drop it!', 'Are you ready?']
+    },
+    warm: {
+      open: ['Hey, it’s {dj}. Good music, good mood, let’s go.', '{dj} here. Let’s make {time} a good one.', 'Hi, I’m {dj}. Sit back, I’ve got the music.'],
+      none: ['Oh, I love this one.', 'Good song, good mood. Let’s keep it going.', 'This one just makes everything better.', 'Sing it if you know it.', 'Windows down for this one.', 'Right where we want to be.'],
+      title: ['Here’s {t}.', 'This is {t}. Enjoy it.', '{t}, coming right up.', 'A little {t} for you.'],
+      artist: ['A bit of {a} for you.', 'Here’s {a}.', 'Some {a} to keep it rolling.'],
+      up: ['Bit more bounce now.', 'Picking it up.'], down: ['Easing off a little.', 'Let’s take it easy for a minute.'],
+      shout: ['Here we go!', 'Oh, this one!']
+    },
+    mellow: {
+      open: ['Hey, it’s {dj}. Let’s slow everything down {time}.', '{dj} here. Get comfortable.', 'Hi. It’s {dj}. Nowhere to be, nothing to do. Just this.'],
+      none: ['Stay right here for a minute.', 'Mm. Nice and easy.', 'Just let this one breathe.', 'No rush. Settle in.', 'This is a good place to be.', 'Let the night do its thing.'],
+      title: ['This is {t}.', 'Here’s {t}. Take your time with it.', 'Easing into {t}.'],
+      artist: ['Something gentle from {a}.', '{a}, nice and easy.'],
+      up: ['A touch more life.', 'Lifting it, just a little.'], down: ['Softer now.', 'Let’s slow it down even more.'],
+      shout: []
+    },
+    soft: {
+      open: ['Hi, it’s {dj}. Take a breath. I’ll keep it gentle.', '{dj} here. Let’s go slow {time}.'],
+      none: ['Softly now.', 'Just breathe with this one.', 'Let it all go for a while.', 'Stay close. This one’s gentle.', 'It’s okay to just listen.'],
+      title: ['This is {t}.', 'Here’s {t}.', 'Something quiet. {t}.'],
+      artist: ['Something soft from {a}.'],
+      up: ['A little warmth now.'], down: ['Quieter still.'],
+      shout: []
     }
-    if (Math.random() < (s.style === 'zen' ? 0.35 : 0.6)) line += ' ' + facts(t, prev, s);
+  };
+  function timeWord() { const h = new Date().getHours(); return h < 5 ? 'tonight' : h < 12 ? 'this morning' : h < 17 ? 'this afternoon' : h < 21 ? 'this evening' : 'tonight'; }
+  function fill(str, c) { return str.replace(/\{(\w+)\}/g, (_, k) => c[k] || '').replace(/\s+/g, ' ').trim(); }
+  const shortTitle = (t) => (t.title || '').replace(/\s*[([].*?[)\]]\s*/g, ' ').replace(/\s+-\s+.*$/, '').replace(/\s+/g, ' ').trim(); // drop "(feat. …)", "[Remastered]", " - From …"
+  const shortArtist = (t) => (t.artist || '').split(/\s*(?:,|&|\bfeat\.?|\bft\.?|\bx\b|;|\/)\s*/i)[0].trim();
+  function pickFresh(arr, s) { // avoid repeating a line the DJ said recently
+    const seen = s.said || (s.said = []); const fresh = arr.filter((x) => !seen.includes(x)), x = A.pick(fresh.length ? fresh : arr);
+    seen.push(x); if (seen.length > 14) seen.shift(); return x;
+  }
+  function writeLine(t, prev, s, moment) {
+    const g = A.djMood(s.vibe), B = LINES[g], c = { dj: A.DJ_STYLES[s.style].dj, t: shortTitle(t), a: shortArtist(t), time: timeWord() };
+    if (moment === 'start') return fill(pickFresh(B.open, s), c);
+    if (moment === 'shout') return B.shout.length ? fill(pickFresh(B.shout, s), c) : '';
+    const r = Math.random(), unknown = !t.artist || /unknown/i.test(t.artist);
+    let line = fill(pickFresh(r < 0.42 ? B.none : r < 0.8 || unknown ? B.title : B.artist, s), c);
+    if (prev && t.an && prev.an) { const d = t.an.energy - prev.an.energy; if (d > 0.22 && Math.random() < 0.6) line = pickFresh(B.up, s) + ' ' + line; else if (d < -0.22 && Math.random() < 0.6) line = pickFresh(B.down, s) + ' ' + line; }
+    if (Math.random() < 0.18) { // now and then, one small human touch
+      const extra = [];
+      if (t.liked) extra.push('One of your favorites.');
+      if (t.plays === 0) extra.push('You haven’t heard this one yet.');
+      if (t.plays > 2 && Date.now() - (t.last || 0) > 60 * 864e5) extra.push('Been a while since this one.');
+      if (s.vibe.id === 'throwback' && t.year) extra.push(`Back to ${t.year}.`);
+      if (extra.length) line += ' ' + A.pick(extra);
+    }
     return line;
   }
   async function llmLine(t, prev, s, moment) {
     const key = await A.safety.secretGet('aiKey'); if (!key) return null;
     const S = A.DJ_STYLES[s.style];
-    const prompt = `You are ${S.dj}, a charismatic radio DJ in the style "${S.label}". Current set vibe: ${s.vibe.name} (${s.vibe.tag}). ` +
-      `${moment === 'start' ? 'You are opening the set.' : `The song that just ended: "${prev ? prev.title : ''}" by ${prev ? prev.artist : ''}.`} ` +
-      `Now introducing: "${t.title}" by ${t.artist}${t.album ? ', album ' + t.album : ''}${t.year ? ', ' + t.year : ''}${t.genre ? ', genre ' + t.genre : ''}. ` +
-      `Time of day: ${timeWord()}. Write ONE spoken intro of 20-40 words, natural, no emojis, no stage directions, no quotation marks. Mention the song and artist.`;
+    const prompt = `You are ${S.dj}, a charismatic DJ in the style "${S.label}". Set mood: ${s.vibe.name} (${s.vibe.tag}). ` +
+      `${moment === 'start' ? 'You are opening the set.' : `The song that just finished: "${prev ? shortTitle(prev) : ''}".`} ` +
+      `Coming in now: "${shortTitle(t)}" by ${shortArtist(t)}. Time of day: ${timeWord()}. ` +
+      `Write ONE short spoken line of 4 to 14 words that matches the mood. Speak like a real DJ talking over the music: casual, warm, no emojis, no quotation marks, no stage directions, ` +
+      `never mention tempo, BPM, keys or numbers. Mention the song title at most once and only if it sounds natural; usually don't say the artist.`;
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
     try {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', signal: ctl.signal,
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: A.store.get('aiModel', 'claude-haiku-5-5'), max_tokens: 160, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ model: A.store.get('aiModel', 'claude-haiku-5-5'), max_tokens: 80, messages: [{ role: 'user', content: prompt }] })
       });
       if (!r.ok) return null;
       const j = await r.json(); const txt = j.content && j.content[0] && j.content[0].text;
-      return txt ? txt.replace(/\s+/g, ' ').trim() : null;
+      return txt ? txt.replace(/\s+/g, ' ').replace(/^["“]|["”]$/g, '').trim() : null;
     } catch { return null; } finally { clearTimeout(to); }
   }
 
@@ -241,10 +281,11 @@
     setJourney(id) { const s = dj.s; A.store.set('djJourney', id); if (!s || !A.JOURNEYS[id]) return; s.journey = id; s.n = Math.min(s.n, 1); dj.refill(); dj.say(id === 'steady' ? 'Keeping it steady.' : `New plan: ${A.JOURNEYS[id].name.toLowerCase()}.`, { quick: true, duck: true }); dj.emit('vibe'); },
     _pick(prev) {
       const s = dj.s; if (!s) return null;
+      const last = prev || P.current, now = P.current;
       let pool = L.tracks.filter((t) => !s.played.has(t.id));
       if (pool.length < 4) { s.played.clear(); pool = L.tracks.slice(); }
+      if (pool.length > 2) pool = pool.filter((t) => t !== last && t !== now); // never the same song twice in a row
       const target = dj._targetEnergy();
-      const last = prev || P.current;
       const scored = pool.map((t) => {
         let sc = A.vibeScore(t, s.vibe, s.genres);
         if (t.an) sc += 0.28 * (1 - Math.min(1, Math.abs(t.an.energy - target) / 0.4));
@@ -253,6 +294,8 @@
         // songs that can be beat-matched with the one before them mix far better: give them a nudge
         const ga = last && last.an && last.an.mix, gb = t.an && t.an.mix;
         if (ga && gb) { const q = ga.bpm / gb.bpm, d = Math.min(...[q, q / 2, q * 2].map((x) => Math.abs(x - 1))); sc += d <= 0.06 ? 0.14 * (1 - d / 0.06) : -0.04; }
+        // and songs in a compatible key (neighbours on the Camelot wheel) blend without clashing
+        if (last && last.an && last.an.key && t.an && t.an.key) sc += 0.1 * (A.keyMatch(last.an.key, t.an.key) - 0.5);
         if (s.focus) sc += 0.5 * (s.focusSim.get(t.id) || 0);
         if (s.artistFocus && nrm(t.artist) === s.artistFocus) sc += 0.55;
         if (t.liked) sc += 0.06; if (t.plays) sc += Math.min(0.06, t.plays * 0.01);
@@ -275,7 +318,7 @@
     },
     refill() { // drop planned songs and choose again (after a nudge)
       if (!dj.s || P.context.type !== 'dj') return;
-      P.order.length = P.pos + 1; dj.ensure(3);
+      P.order.length = P.pos + 1; if (dj.s.preps) dj.s.preps.clear(); dj.ensure(3); dj.prepare();
     },
     nudge(kind) {
       const s = dj.s; if (!s) return;
@@ -318,28 +361,80 @@
     },
 
     // ----- speaking -----
+    // The DJ talks like a radio host: over the quiet start of a song (never across a blend), with the music dipped
+    // rather than muted, and short enough to finish before the hook lands.
     _unduck() { if (E.ctx || E.direct) E.setDuck(1, 0.5); dj.emit('talk', false); },
-    async say(text, { duck = true, quick = false } = {}) {
+    _speed() { const s = dj.s; return ((s && A.DJ_STYLES[s.style].speed) || 1) * (MOOD_SPEED[A.djMood(s && s.vibe)] || 1); },
+    studio() { return !!(A.voice && A.voice.wanted() && A.voice.ready()); },
+    _render(text) { // a studio-voice clip for this line, or null (then the system voice reads it live)
+      if (!text || A.store.get('djVoiceOn', true) === false || !dj.studio()) return Promise.resolve(null);
+      return A.voice.synth(text, { style: (dj.s && dj.s.style) || 'smooth', speed: dj._speed() }).catch(() => null);
+    },
+    async say(text, { duck = true, quick = false, clip = null, level = 0.42 } = {}) {
       const s = dj.s; const S = A.DJ_STYLES[(s && s.style) || 'smooth'];
+      if (!text) return false;
       dj.emit('say', { text, dj: S.dj }); dj.emit('talk', true);
       const token = (dj._tok = (dj._tok || 0) + 1);
-      if (duck && (E.ctx || E.direct)) E.setDuck(0.2, 0.25);
-      const spoke = await A.speech.speak(text, { rate: S.rate, pitch: S.pitch });
-      if (!spoke) await A.sleep(Math.min(7000, 1800 + text.length * 55));
-      if (dj._tok === token) { E.setDuck(1, 0.8); dj.emit('talk', false); setTimeout(() => dj._tok === token && dj.emit('say', null), quick ? 600 : 1200); }
+      if (duck && (E.ctx || E.direct)) E.setDuck(level, 0.18);
+      let spoke = false;
+      if (!clip && dj.studio()) clip = await dj._render(text);
+      if (dj._tok !== token) return false;
+      if (clip) { A.speech.speaking = true; spoke = await A.voice.play(clip); A.speech.speaking = false; }
+      else spoke = await A.speech.speak(text, { rate: S.rate * (MOOD_SPEED[A.djMood(s && s.vibe)] || 1), pitch: S.pitch });
+      if (!spoke && dj._tok === token) await A.sleep(Math.min(5000, 1200 + text.length * 45));
+      if (dj._tok === token) { E.setDuck(1, 0.6); dj.emit('talk', false); setTimeout(() => dj._tok === token && dj.emit('say', null), quick ? 600 : 1200); }
+      return spoke;
+    },
+    // Decide now whether the DJ will talk when the next song comes in, write the line and render it in the
+    // background, so it is ready the moment it is needed (and the mixer can leave room for it).
+    prepare() {
+      const s = dj.s; if (!s || s.talk === 'off' || A.store.get('djVoiceOn', true) === false) return;
+      const nid = P.peekNext(), t = nid && L.byId.get(nid), preps = s.preps || (s.preps = new Map()); if (!t || preps.has(nid)) return;
+      const n = s.n + 1, freq = s.talk, gap = n - (s.lastTalk || 0);
+      const talk = freq === 'always' ? true : freq === 'often' ? gap >= 2 : gap >= 4;
+      const prep = { id: nid, talk, line: null, clip: null, shout: null, shoutClip: null };
+      preps.set(nid, prep); if (preps.size > 4) preps.delete(preps.keys().next().value);
+      if (!talk) return;
+      (async () => {
+        let line = await llmLine(t, P.current, s, 'trans'); if (preps.get(nid) !== prep) return;
+        prep.line = line || writeLine(t, P.current, s, 'trans');
+        prep.clip = dj._render(prep.line);
+        const sh = writeLine(t, P.current, s, 'shout'); if (sh) { prep.shout = sh; prep.shoutClip = dj._render(sh); }
+        const c = await prep.clip; prep.secs = c ? c.secs : null;
+        if (A.mixer && preps.get(nid) === prep && P.peekNext() === nid && !A.mixer.fxOn && !E.mixing) A.mixer.replan(); // room for the talk may change the mix-in point
+      })();
+    },
+    // seconds of talking the mixer should leave room for when bringing in this song (0 if the DJ stays quiet)
+    talkRoom(id) { const s = dj.s, p = s && s.preps && s.preps.get(id); if (!p || !p.talk || !p.line) return 0; return (p.secs || 0.9 + p.line.split(/\s+/).length * 0.36) + 0.8; },
+    // a build-up is running into the drop of the next song: a hype DJ shouts over it, timed to land on the drop
+    async onBuild(secsToDrop, nextId) {
+      const s = dj.s, p = s && s.preps && s.preps.get(nextId); if (!p || !p.talk || !p.shout) return;
+      const clip = await p.shoutClip, len = clip ? clip.secs : 0.4 + p.shout.split(/\s+/).length * 0.3;
+      const wait = secsToDrop - len - 0.25; if (wait < 0) return;
+      p.shouted = true; dj._keep = true;
+      await A.sleep(wait * 1000); if (dj.s !== s) { dj._keep = false; return; }
+      await dj.say(p.shout, { clip, duck: false, quick: true }); dj._keep = false;
     },
     async onTrack(track, prev) {
       const s = dj.s; if (!s || s.dead) return;
       const first = s.n === 0; s.n++;
       if (s.journey === 'wind' && s.n === JLEN && !P.sleep) { P.setSleep('end'); A.toast('Wind down: Aurora stops after this song'); }
       dj.ensure(); dj.emit('track', track);
-      const freq = s.talk; if (freq === 'off') return;
-      if (!first && ((freq === 'often' && s.n % 2) || (freq === 'rare' && s.n % 4))) return;
-      const moment = first ? 'start' : 'trans';
-      let line = await llmLine(track, prev, s, moment);
-      if (P.current !== track || !dj.s) return;
-      if (!line) line = writeLine(track, prev, s, moment);
-      dj.say(line);
+      const p = (s.preps && s.preps.get(track.id)) || null; if (p) s.preps.delete(track.id);
+      setTimeout(() => dj.prepare(), 1500);
+      if (s.talk === 'off' || A.store.get('djVoiceOn', true) === false) return;
+      if (first) { s.lastTalk = s.n; const line = writeLine(track, prev, s, 'start'); dj.say(line, { clip: await dj._render(line) }); return; }
+      if (!p || !p.talk || p.shouted) { if (p && p.shouted) s.lastTalk = s.n; return; }
+      // wait for the blend to finish: the DJ never talks across two songs
+      for (let i = 0; i < 400 && E.mixing; i++) await A.sleep(150);
+      if (P.current !== track || dj.s !== s) return;
+      await A.sleep(350);
+      const clip = await p.clip, line = p.line; if (!line || P.current !== track) return;
+      // only if it fits before the hook comes in (otherwise save it: the DJ doesn't talk over the best part)
+      const m = A.mixer && A.mixer.grid(track), secs = clip ? clip.secs : 0.9 + line.split(/\s+/).length * 0.36;
+      if (m && A.mixer.mode() === 'parts') { const left = (m.bar0 + m.hb * 4 * (60 / m.bpm) - E.time) / (E.deck.el.playbackRate || 1); if (left < secs + 0.3) return; }
+      s.lastTalk = s.n; dj.say(line, { clip });
     }
   };
+  P.addEventListener('queue', () => { if (dj.active) dj.prepare(); });
 })(window.A);
