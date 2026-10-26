@@ -1,3 +1,3 @@
 /* Stamped by tools/publish-web.js - bump with: npm run bump -- --notes "..." */
 window.A = window.A || {};
-A.VERSION = { name: '1.8.1', build: 22, notes: 'Much smoother: song analysis now runs in the background, so the app no longer freezes or lags while it learns your library. The studio voice runs in the background too and only starts when the DJ is about to speak, so the app opens fast and the music never stutters while the DJ talks. DJ effects (echo and reverb) only run during a mix, saving battery and CPU the rest of the time. The progress bar and timers update only when they change, which keeps scrolling and the Now Playing screen smooth' };
+A.VERSION = { name: '1.8.2', build: 23, notes: 'AI Audition now asks for the microphone itself: on Android you get the normal Allow prompt, and if it was switched off before there is a button to fix it. Removed the Ask your DJ text box to keep the DJ screen clean' };

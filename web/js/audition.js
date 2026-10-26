@@ -11,7 +11,7 @@
   const noteName = (m) => { const r = Math.round(m); return NOTE[((r % 12) + 12) % 12] + (Math.floor(r / 12) - 1); };
   const mel = (t) => t && t.an && t.an.mix && t.an.mix.v === A.MIX_VERSION && t.an.mix.mel;
   AU.ready = () => L.tracks.filter((t) => mel(t));
-  AU.supported = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && !(window.AuroraAndroid && (+((window.AuroraAndroid.appBuild && window.AuroraAndroid.appBuild()) || 0) < 21));
+  AU.supported = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && !(window.AuroraAndroid && !window.AuroraAndroid.requestMic); // older Android apps can't use the microphone
   const TAKE_MAX = 45;
 
   // ---------- choosing songs ----------
@@ -27,7 +27,19 @@
   };
 
   // ---------- recording ----------
+  // Android: show Android's own "Allow Aurora to record audio?" prompt first and wait for the answer
+  async function askMic() {
+    const AA = window.AuroraAndroid; if (!AA || !AA.requestMic) return true;
+    if (AA.micGranted()) return true;
+    // the app tells us the answer as soon as the prompt closes; polling is only a safety net
+    const answer = new Promise((r) => { A._micRes = r; });
+    AA.requestMic();
+    await Promise.race([answer, (async () => { for (let i = 0; i < 100 && !AA.micGranted(); i++) await A.sleep(300); })()]);
+    A._micRes = null;
+    return AA.micGranted();
+  }
   async function openMic() {
+    if (!(await askMic())) { const e = new Error('denied'); e.name = 'NotAllowedError'; throw e; }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
     const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
     const src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), sink = ctx.createGain(); sink.gain.value = 0;
@@ -118,8 +130,13 @@
   // ---------- the singing session ----------
   async function startSession(ids) {
     AU.picks = ids; AU.takes = []; AU.cur = 0;
-    try { AU.mic = await openMic(); } catch (e) { A.toast(/denied|NotAllowed/i.test(String(e && (e.name || e.message))) ? 'Aurora needs the microphone to hear you sing. Allow it and try again.' : 'Couldn’t open the microphone'); return; }
-    AU.state = 'sing'; A.render(true); runTake();
+    try { AU.mic = await openMic(); } catch (e) {
+      AU.micBlocked = /denied|NotAllowed|Permission/i.test(String(e && (e.name + ' ' + e.message)));
+      AU.state = 'home'; A.render(true);
+      if (!AU.micBlocked) A.toast('Couldn’t open the microphone. Is another app using it?');
+      return;
+    }
+    AU.micBlocked = false; AU.state = 'sing'; A.render(true); runTake();
   }
   async function runTake() {
     const t = L.byId.get(AU.picks[AU.cur]); if (!t) return finish();
@@ -169,7 +186,8 @@
     if (AU.state === 'pick') return AU.pickPage(el);
     const p = AU.profile, ready = AU.ready().length, total = L.tracks.length, left = A.analysis ? A.analysis.pendingList().length : 0;
     const hero = `<div class="au-hero"><div class="au-orb">${icon('mic')}</div><div style="flex:1;min-width:240px"><div class="faint au-kicker">AI Audition</div><h1>Which songs were made for your voice?</h1><p>Sing along to a few songs. Aurora listens to your range and the character of your voice, then finds the songs in your library that sit best for you, and the key to sing the rest in.</p>
-      ${AU.supported() ? `<div class="au-modes"><button class="au-mode" data-a="au-auto"${ready < 3 ? ' disabled' : ''}><b>${icon('spark')} Auto</b><small>Aurora picks 3 songs you know, from low to high. Just sing.</small></button><button class="au-mode" data-a="au-manual"${ready < 1 ? ' disabled' : ''}><b>${icon('list')} Pick songs</b><small>Choose 1 to 5 songs you love to sing.</small></button></div>` : `<div class="banner"><span>${window.AuroraAndroid ? 'AI Audition needs the newest Android app (it adds microphone access). Download it from Settings, About.' : 'This browser can’t use the microphone.'}</span></div>`}
+      ${AU.supported() ? `<div class="au-modes"><button class="au-mode" data-a="au-auto"${ready < 3 ? ' disabled' : ''}><b>${icon('spark')} Auto</b><small>Aurora picks 3 songs you know, from low to high. Just sing.</small></button><button class="au-mode" data-a="au-manual"${ready < 1 ? ' disabled' : ''}><b>${icon('list')} Pick songs</b><small>Choose 1 to 5 songs you love to sing.</small></button></div>` : (window.AuroraAndroid ? `<div class="banner"><span>AI Audition needs the newest Android app, which can use the microphone. Install it over this one: your music and settings stay.</span>${A.updater && A.updater.native ? `<a class="btn accent sm" href="${A.esc(A.updater.native.url)}" target="_blank" rel="noopener">Download</a>` : ''}</div>` : '<div class="banner"><span>This browser can’t use the microphone.</span></div>')}
+      ${AU.supported() && AU.micBlocked ? `<div class="banner"><span>Aurora needs the microphone to hear you sing. ${window.AuroraAndroid ? 'If no prompt appeared, Android has it switched off: open Settings, Permissions, Microphone and choose Allow.' : 'Allow it when your browser asks, or turn it on in the site or system settings.'}</span><button class="btn accent sm" data-a="au-mic">Allow microphone</button>${window.AuroraAndroid && window.AuroraAndroid.openAppSettings ? '<button class="btn ghost sm" data-a="au-mic-settings">Open settings</button>' : ''}</div>` : ''}
       ${ready < 3 ? `<p class="faint" style="font-size:13px">${total ? `Aurora is still listening to your library (${total - left}/${total} songs). AI Audition can use ${ready} so far.` : 'Add some music first.'}</p>` : `<p class="faint" style="font-size:13px">${icon('info')} Headphones work best. Your voice is analysed on this device and the recording is never saved.</p>`}</div></div>`;
     if (!p) { el.innerHTML = `<div class="page au-page">${hero}</div>`; return; }
     el.innerHTML = `<div class="page au-page">${AU.state === 'result' ? '' : hero}${AU.resultHTML(p)}</div>`;
@@ -221,6 +239,8 @@
 
   Object.assign(A.actions, {
     'au-auto': async () => { const ids = (await AU.autoPick()).map((t) => t.id); if (ids.length < 1) return A.toast('Aurora needs a few more analysed songs first'); startSession(ids); },
+    'au-mic': async () => { try { const ok = await askMic(); if (!ok) throw new Error('denied'); const st = await navigator.mediaDevices.getUserMedia({ audio: true }); st.getTracks().forEach((t) => t.stop()); AU.micBlocked = false; A.toast('Microphone is on. Pick a mode to start'); } catch { AU.micBlocked = true; } A.render(true); },
+    'au-mic-settings': () => { try { window.AuroraAndroid.openAppSettings(); } catch { /* */ } },
     'au-manual': () => { AU.state = 'pick'; AU.sel = []; A.render(true); },
     'au-home': () => { AU.state = AU.profile ? 'result' : 'home'; A.render(true); },
     'au-toggle': (el) => { const id = el.dataset.id, s = AU.sel || (AU.sel = []), i = s.indexOf(id); if (i > -1) s.splice(i, 1); else if (s.length < 5) s.push(id); else A.toast('Up to 5 songs'); A.render(true); },

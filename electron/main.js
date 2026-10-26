@@ -1,6 +1,6 @@
 // Aurora desktop shell. Serves the web app from a private app:// scheme (so WebAudio, IndexedDB and
 // range-seeking all behave like a real origin) and exposes the user's music folders via app://local/__lib/.
-const { app, BrowserWindow, protocol, dialog, ipcMain, shell, globalShortcut, Menu, safeStorage } = require('electron');
+const { app, BrowserWindow, protocol, dialog, ipcMain, shell, globalShortcut, Menu, safeStorage, session, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -166,6 +166,16 @@ const fromApp = (e) => { try { return new URL(e.senderFrame.url).protocol === 'a
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   loadAllowed(); prepareLive();
+  // the microphone (AI Audition) is allowed for Aurora's own pages only, never the camera or other sites
+  const own = (u) => /^app:\/\/local\//.test(u || '');
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb, details) => {
+    if (perm === 'media' && own(details.requestingUrl || wc.getURL()) && !(details.mediaTypes || []).includes('video')) {
+      if (process.platform === 'darwin') return systemPreferences.askForMediaAccess('microphone').then(cb, () => cb(false));
+      return cb(true);
+    }
+    cb(perm !== 'media' && own(wc.getURL())); // as before for Aurora's pages; nothing for anything else
+  });
+  session.defaultSession.setPermissionCheckHandler((wc, perm, origin) => (perm === 'media' ? own(origin + '/') || own(wc && wc.getURL()) : true));
   protocol.handle('app', async (req) => {
     const u = new URL(req.url); const p = decodeURIComponent(u.pathname);
     if (p.startsWith('/__lib/')) {
