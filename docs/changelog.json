@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.8.2",
+    "date": "2026-10-26",
+    "notes": [
+      "AI Audition now asks for the microphone itself: on Android you get the normal Allow prompt, and if it was switched off before there is a button to fix it",
+      "Removed the Ask your DJ text box to keep the DJ screen clean"
+    ]
+  },
+  {
     "version": "1.8.1",
     "date": "2026-10-25",
     "notes": [

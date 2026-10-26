@@ -30,4 +30,11 @@ public class MainActivity extends BridgeActivity {
             }
         });
     }
+
+    // the answer to the microphone prompt (AI Audition) goes straight back to the web app
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 12) AuroraBridge.emitJson("mic", grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED ? "true" : "false");
+    }
 }

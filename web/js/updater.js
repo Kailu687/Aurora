@@ -15,7 +15,7 @@
   // Android app builds and Windows versions from before the app could report its own version
   const LEGACY_ANDROID_BUILD = 19, LEGACY_WINDOWS_VERSION = '1.6.2';
   // the oldest installed app (Android build / Windows version) that this version of Aurora's features work with
-  const NATIVE_MIN = { android: 21, windows: '1.7.0' }; // Android 21 adds the microphone for AI Audition
+  const NATIVE_MIN = { android: 23, windows: '1.7.0' }; // these app builds ask for the microphone (AI Audition)
   A.DOWNLOADS_URL = 'https://kailashamarnath.me/Aurora/downloads/';
 
   UP.load = async () => { try { UP.cfg = await (await fetch('config.json', { cache: 'no-store' })).json(); } catch { UP.cfg = {}; } };

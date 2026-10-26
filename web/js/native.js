@@ -21,6 +21,7 @@
   A.nativeEvent = (ev, d) => {
     if (ev === 'http') { const p = A._http && A._http.get(d.id); if (p) { A._http.delete(d.id); d.ok ? p.res(d.body) : p.rej(new Error(d.error || 'http failed')); } return; }
     if (ev === 'folder' && A._folderRes) { const r = A._folderRes; A._folderRes = null; r(d); }
+    if (ev === 'mic' && A._micRes) { const r = A._micRes; A._micRes = null; r(!!d); }
   };
   // buttons in the notification / lock screen
   A.nativeCmd = (cmd, arg) => {

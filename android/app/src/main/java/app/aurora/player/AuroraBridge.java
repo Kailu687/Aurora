@@ -128,6 +128,27 @@ public class AuroraBridge {
         } catch (Exception e) { return "{\"error\":\"" + e + "\"}"; }
     }
 
+    // ----- microphone (AI Audition) -----
+    @JavascriptInterface
+    public boolean micGranted() { return ContextCompat.checkSelfPermission(act, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED; }
+
+    /** Shows Android's own "Allow Aurora to record audio?" prompt. Returns "blocked" when Android won't show it any more. */
+    @JavascriptInterface
+    public String requestMic() {
+        if (micGranted()) return "granted";
+        main.post(() -> ActivityCompat.requestPermissions(act, new String[]{Manifest.permission.RECORD_AUDIO}, 12));
+        return "requested";
+    }
+
+    /** Opens Aurora's page in Android settings (for a permission the user turned off earlier). */
+    @JavascriptInterface
+    public String openAppSettings() {
+        main.post(() -> {
+            try { act.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + act.getPackageName()))); } catch (Exception e) { /* */ }
+        });
+        return "ok";
+    }
+
     @JavascriptInterface
     public String requestPermission() {
         if (Build.VERSION.SDK_INT >= 33 && !permissionGranted()) {
